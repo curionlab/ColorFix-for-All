@@ -6,103 +6,101 @@ import { toHex } from '@colorfix/color-engine';
 // Use local worker or CDN. For simplicity, we can load from CDN in production
 GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs`;
 
-function getMedianColor(imageData: ImageData): string {
-  const { data } = imageData;
-  let r = 0, g = 0, b = 0, count = 0;
+function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: string } {
+  const { data, width, height } = imageData;
   
-  // A simple average of non-transparent (or mostly non-transparent) pixels
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] > 128) { // if alpha > 0.5
-      r += data[i];
-      g += data[i + 1];
-      b += data[i + 2];
-      count++;
-    }
-  }
-
-  if (count === 0) return '#ffffff'; // Fallback to white
-
-  return toHex({
-    r: Math.round(r / count),
-    g: Math.round(g / count),
-    b: Math.round(b / count)
-  });
-}
-
-function getDominantForegroundColor(imageData: ImageData, bgColorHex: string): string {
-  const { data } = imageData;
+  const colorBorders = new Map<string, number>();
+  const colorTotals = new Map<string, { count: number, r: number, g: number, b: number }>();
   
-  let bgR = 255, bgG = 255, bgB = 255;
-  if (bgColorHex.length === 7) {
-    bgR = parseInt(bgColorHex.slice(1, 3), 16);
-    bgG = parseInt(bgColorHex.slice(3, 5), 16);
-    bgB = parseInt(bgColorHex.slice(5, 7), 16);
-  }
-
-  const colorCounts = new Map<string, { count: number, r: number, g: number, b: number }>();
-  let hasDistinctPixels = false;
-
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] > 128) { // non-transparent
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      
-      const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
-      // If pixel is visually distinct from background (distance > 15 out of 765)
-      if (diff > 15) {
-        hasDistinctPixels = true;
-        
-        // Quantize slightly (remove lowest 3 bits) to group anti-aliased sub-pixels together
-        const qR = r & 0xF8;
-        const qG = g & 0xF8;
-        const qB = b & 0xF8;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i + 3] > 128) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const qR = r & 0xE0;
+        const qG = g & 0xE0;
+        const qB = b & 0xE0;
         const key = `${qR},${qG},${qB}`;
         
-        if (!colorCounts.has(key)) {
-          colorCounts.set(key, { count: 0, r, g, b }); // store the exact color of the first match
+        if (!colorTotals.has(key)) {
+          colorTotals.set(key, { count: 0, r: 0, g: 0, b: 0 });
+          colorBorders.set(key, 0);
         }
-        colorCounts.get(key)!.count++;
+        const total = colorTotals.get(key)!;
+        total.count++;
+        total.r += r; 
+        total.g += g;
+        total.b += b;
+        
+        // Count pixels on the perimeter to reliably identify background
+        if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+          colorBorders.set(key, (colorBorders.get(key) || 0) + 1);
+        }
       }
     }
   }
 
-  // Fallback if no distinct pixels were found (e.g. extremely low contrast or very thin font missed)
-  if (!hasDistinctPixels) {
-    return getMostDifferentColorFallback(imageData, bgR, bgG, bgB);
-  }
-
-  // Find the exact color that appeared most frequently among non-background pixels
-  let maxCount = -1;
-  let dominantColor = { r: 0, g: 0, b: 0 };
-  
-  // Need to iterate using Array.from because we compile to ES2022+ or just use forEach
-  colorCounts.forEach(val => {
-    if (val.count > maxCount) {
-      maxCount = val.count;
-      dominantColor = { r: val.r, g: val.g, b: val.b };
+  // Determine Background: The color with the most border pixels.
+  let bgKey = '';
+  let maxBorder = -1;
+  colorBorders.forEach((bCount, key) => {
+    const totalCount = colorTotals.get(key)!.count;
+    // Tie-breaker: total count of pixels
+    if (bCount > maxBorder || (bCount === maxBorder && totalCount > (colorTotals.get(bgKey)?.count || 0))) {
+      maxBorder = bCount;
+      bgKey = key;
     }
   });
 
-  return toHex(dominantColor);
-}
+  const bgCluster = colorTotals.get(bgKey);
+  let bgR = 255, bgG = 255, bgB = 255;
+  if (bgCluster) {
+    bgR = Math.round(bgCluster.r / bgCluster.count);
+    bgG = Math.round(bgCluster.g / bgCluster.count);
+    bgB = Math.round(bgCluster.b / bgCluster.count);
+  }
 
-function getMostDifferentColorFallback(imageData: ImageData, bgR: number, bgG: number, bgB: number): string {
-  const { data } = imageData;
+  // Determine Foreground:
+  // Pick the significant cluster with the absolute largest difference from the background,
+  // effectively ignoring the frequent gray anti-aliased edge pixels.
+  const totalPixels = width * height;
+  const minFreq = Math.max(2, totalPixels * 0.015); // min 1.5% or 2 pixels
+  
+  let bestFg = { r: bgR, g: bgG, b: bgB };
   let maxDiff = -1;
-  let r = 0, g = 0, b = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] > 128) {
-      const diff = Math.abs(data[i] - bgR) + Math.abs(data[i + 1] - bgG) + Math.abs(data[i + 2] - bgB);
+
+  colorTotals.forEach((cluster, key) => {
+    if (key !== bgKey && cluster.count >= minFreq) {
+      const cr = Math.round(cluster.r / cluster.count);
+      const cg = Math.round(cluster.g / cluster.count);
+      const cb = Math.round(cluster.b / cluster.count);
+      const diff = Math.abs(cr - bgR) + Math.abs(cg - bgG) + Math.abs(cb - bgB);
       if (diff > maxDiff) {
         maxDiff = diff;
-        r = data[i];
-        g = data[i + 1];
-        b = data[i + 2];
+        bestFg = { r: cr, g: cg, b: cb };
+      }
+    }
+  });
+
+  // Fallback if no robust cluster found (e.g. extremely thin 1px text)
+  if (maxDiff === -1) {
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 128) {
+        const diff = Math.abs(data[i] - bgR) + Math.abs(data[i + 1] - bgG) + Math.abs(data[i + 2] - bgB);
+        if (diff > maxDiff) {
+          maxDiff = diff;
+          bestFg = { r: data[i], g: data[i + 1], b: data[i + 2] };
+        }
       }
     }
   }
-  return toHex({ r, g, b });
+
+  return {
+    bg: toHex({ r: bgR, g: bgG, b: bgB }),
+    fg: toHex(bestFg)
+  };
 }
 
 export async function extractPdf(file: File): Promise<{
@@ -166,26 +164,20 @@ export async function extractPdf(file: File): Promise<{
       // Adjust Y because it represents baseline, moving it up to roughly top of text
       const adjustedY = y - h;
 
-      // Sample background color just outside the text bounds
       let bgColor = '#ffffff';
+      let fgColor = '#000000';
       try {
-        const sx = Math.max(0, x - 4);
-        const sy = Math.max(0, adjustedY - 4);
-        const sample = ctx.getImageData(sx, sy, 4, 4); // sample a 4x4 area outside
-        bgColor = getMedianColor(sample);
-      } catch(e) { /* ignore CORS/bounds errors */ }
-
-      // Get text color by sampling the entire bounding box and taking the dominant pixel different from background
-      // This protects against mistaking background noise or neighboring boxes as the text itself.
-      let fgColor = '#000000'; 
-      try {
-        const sx = Math.max(0, x - 1);
-        const sy = Math.max(0, adjustedY - 1);
-        const sw = Math.min(canvas.width - sx, w + 2);
-        const sh = Math.min(canvas.height - sy, h + 2);
+        // Expand the bounding box slightly to capture the background perimeter reliably
+        const sx = Math.max(0, Math.floor(x - 2));
+        const sy = Math.max(0, Math.floor(adjustedY - 2));
+        const sw = Math.min(canvas.width - sx, Math.ceil(w + 4));
+        const sh = Math.min(canvas.height - sy, Math.ceil(h + 4));
+        
         if (sw > 0 && sh > 0) {
           const areaSample = ctx.getImageData(sx, sy, sw, sh);
-          fgColor = getDominantForegroundColor(areaSample, bgColor);
+          const colors = getForegroundBackgroundColors(areaSample);
+          bgColor = colors.bg;
+          fgColor = colors.fg;
         }
       } catch(e) {}
 
