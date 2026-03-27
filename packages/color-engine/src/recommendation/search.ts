@@ -1,5 +1,6 @@
 import { RgbColor } from '../color/parse';
-import { rgbToHsl, hslToRgb, HslColor, rgbToLab, LabColor } from '../color/convert';
+import { rgbToHsl, hslToRgb, rgbToLab } from '../color/convert';
+import { ciede2000 } from '../color/distance';
 import { checkWcagCompliance } from '../analysis/wcag';
 import { checkIsoCompliance } from '../analysis/iso';
 
@@ -9,16 +10,10 @@ export interface SearchOptions {
   maxAttempts?: number; // Default 100
 }
 
-function calculateDeltaE(lab1: LabColor, lab2: LabColor): number {
-  const dl = lab1.l - lab2.l;
-  const da = lab1.a - lab2.a;
-  const db = lab1.b - lab2.b;
-  return Math.sqrt(dl * dl + da * da + db * db);
-}
-
 /**
  * Searches for the closest accessible color by adjusting lightness/saturation,
  * preserving hue as much as possible to maintain brand identity.
+ * Uses CIEDE2000 to measure perceptual distance from the original color.
  */
 export function findAccessibleColor(
   fg: RgbColor,
@@ -43,18 +38,18 @@ export function findAccessibleColor(
   let minDeltaE = Infinity;
 
   // 1. Coarse search (stride 10)
-  // Scans both L and S to find the perceptible best match avoiding the "fall to black" trap
+  // Scans both L and S to find the perceptual best match, avoiding the "fall to black" trap
   for (let l = 0; l <= 100; l += 10) {
     for (let s = 0; s <= 100; s += 10) {
       const testHsl = { ...currentHsl, l: l / 100, s: s / 100 };
       const testRgb = hslToRgb(testHsl);
-      
+
       const wcag = checkWcagCompliance(testRgb, bg);
       const iso = checkIsoCompliance(testRgb, bg);
 
       if (wcag.ratio >= targetRatio && (!enforceIso || iso.passesIso24505)) {
         const testLab = rgbToLab(testRgb);
-        const deltaE = calculateDeltaE(currentLab, testLab);
+        const deltaE = ciede2000(currentLab, testLab);
         if (deltaE < minDeltaE) {
           minDeltaE = deltaE;
           bestPass = testRgb;
@@ -63,7 +58,7 @@ export function findAccessibleColor(
     }
   }
 
-  // 2. Fine search around the best coarse candidate
+  // 2. Fine search: refine around best coarse candidate (±9 steps)
   if (bestPass) {
     const bestCoarseHsl = rgbToHsl(bestPass);
     const coarseL = Math.round(bestCoarseHsl.l * 100);
@@ -78,13 +73,13 @@ export function findAccessibleColor(
       for (let s = minS; s <= maxS; s++) {
         const testHsl = { ...currentHsl, l: l / 100, s: s / 100 };
         const testRgb = hslToRgb(testHsl);
-        
+
         const wcag = checkWcagCompliance(testRgb, bg);
         const iso = checkIsoCompliance(testRgb, bg);
 
         if (wcag.ratio >= targetRatio && (!enforceIso || iso.passesIso24505)) {
           const testLab = rgbToLab(testRgb);
-          const deltaE = calculateDeltaE(currentLab, testLab);
+          const deltaE = ciede2000(currentLab, testLab);
           if (deltaE < minDeltaE) {
             minDeltaE = deltaE;
             bestPass = testRgb;
@@ -94,18 +89,16 @@ export function findAccessibleColor(
     }
   }
 
-  // If no color passes both criteria across the coarse grid
-  // (e.g., standard hue causes CVD failure everywhere, or WCAG 4.5 ratio is mathematically impossible on this BG)
-  // Fall back to the absolute highest contrasting color along this hue (testing only Lightness)
+  // 3. Fallback: if nothing passed both WCAG + ISO, find highest contrast along this hue
   if (!bestPass) {
     let maxRatio = -1;
     let fallbackRgb: RgbColor = fg;
-    
+
     for (let l = 0; l <= 100; l++) {
       const testHsl = { ...currentHsl, l: l / 100 };
       const testRgb = hslToRgb(testHsl);
       const wcag = checkWcagCompliance(testRgb, bg);
-      
+
       if (wcag.ratio > maxRatio) {
         maxRatio = wcag.ratio;
         fallbackRgb = testRgb;
