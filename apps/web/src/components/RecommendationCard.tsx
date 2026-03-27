@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ExtractedTextElement, Issue, Recommendation } from '../types';
 import { checkWcagCompliance, checkIsoCompliance, parseHex } from '@colorfix/color-engine';
-import { ArrowRight, Copy, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Copy, CheckCircle2, AlertTriangle, Sliders, RefreshCw } from 'lucide-react';
 
 interface RecommendationCardProps {
   element: ExtractedTextElement;
@@ -9,15 +9,77 @@ interface RecommendationCardProps {
   recommendation: Recommendation;
 }
 
+function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function isValidHex(hex: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(hex);
+}
+
 export default function RecommendationCard({ element, issue, recommendation }: RecommendationCardProps) {
   const fg = recommendation.originalFg;
   const bg = recommendation.originalBg;
   const fixedFg = recommendation.suggestedFg;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(fixedFg);
-    alert('カラーコードをコピーしました！');
+  // --- Manual Adjustment State ---
+  const [customFg, setCustomFg] = useState(fixedFg);
+  const [hexInput, setHexInput] = useState(fixedFg);
+  const [liveWcag, setLiveWcag] = useState<ReturnType<typeof checkWcagCompliance> | null>(null);
+  const [liveIso, setLiveIso] = useState<ReturnType<typeof checkIsoCompliance> | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Recompute live metrics whenever the custom color changes
+  const recomputeMetrics = useCallback((hex: string) => {
+    const parsedBg = parseHex(bg);
+    const parsedFg = parseHex(hex);
+    if (!parsedBg || !parsedFg) return;
+    setLiveWcag(checkWcagCompliance(parsedFg, parsedBg));
+    setLiveIso(checkIsoCompliance(parsedFg, parsedBg));
+  }, [bg]);
+
+  // Initialize metrics on mount and whenever fixedFg changes
+  useEffect(() => {
+    setCustomFg(fixedFg);
+    setHexInput(fixedFg);
+    recomputeMetrics(fixedFg);
+  }, [fixedFg, recomputeMetrics]);
+
+  // Handle color picker changes (always valid hex)
+  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const hex = e.target.value;
+    setCustomFg(hex);
+    setHexInput(hex);
+    recomputeMetrics(hex);
   };
+
+  // Handle hex text input changes (validate before applying)
+  const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setHexInput(val);
+    const normalized = val.startsWith('#') ? val : '#' + val;
+    if (isValidHex(normalized)) {
+      setCustomFg(normalized);
+      recomputeMetrics(normalized);
+    }
+  };
+
+  // Reset to suggestion
+  const handleReset = () => {
+    setCustomFg(fixedFg);
+    setHexInput(fixedFg);
+    recomputeMetrics(fixedFg);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(customFg);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const isModified = customFg.toLowerCase() !== fixedFg.toLowerCase();
+
+  const passesAll = !!(liveWcag?.passesAA && liveIso?.passesIso24505);
 
   return (
     <div className="border border-red-200 rounded-xl bg-white overflow-hidden flex flex-col">
@@ -31,18 +93,19 @@ export default function RecommendationCard({ element, issue, recommendation }: R
           {issue.metrics && !issue.metrics.passesIso24505 && <span className="bg-red-200 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">ISO 24505-2 違反</span>}
         </div>
       </div>
-      
+
       <div className="p-4 flex flex-col gap-4">
-        {/* Target Object string representation */}
+        {/* Target text preview */}
         <div className="bg-slate-50 p-3 rounded-lg border text-sm font-mono whitespace-nowrap overflow-hidden text-ellipsis shadow-inner text-slate-700">
           "{element.text}"
         </div>
 
-        {/* Current State vs Fixed State Swatches */}
+        {/* Before/After swatches */}
         <div className="grid grid-cols-2 gap-4">
+          {/* Before */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">現状の色</span>
-            <div 
+            <div
               className="h-16 rounded-md border shadow-sm flex items-center justify-center p-2"
               style={{ backgroundColor: bg }}
             >
@@ -56,42 +119,132 @@ export default function RecommendationCard({ element, issue, recommendation }: R
             </div>
           </div>
 
+          {/* After — live preview with customFg */}
           <div className="flex flex-col gap-1 relative">
             <div className="absolute top-1/2 -left-3 -translate-y-1/2 bg-white rounded-full p-0.5 shadow-sm border z-10">
               <ArrowRight className="w-3 h-3 text-slate-400" />
             </div>
-            <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> 提案する色
+            <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: passesAll ? '#059669' : '#b45309' }}>
+              {passesAll ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+              {passesAll ? '基準クリア' : '基準未達'}
             </span>
-            <div 
-              className="h-16 rounded-md border border-emerald-200 ring-2 ring-emerald-50 ring-offset-1 shadow-sm flex items-center justify-center p-2 overflow-hidden"
-              style={{ backgroundColor: bg }}
+            <div
+              className="h-16 rounded-md border-2 ring-2 ring-offset-1 shadow-sm flex items-center justify-center p-2 overflow-hidden transition-all"
+              style={{
+                backgroundColor: bg,
+                borderColor: passesAll ? '#6ee7b7' : '#fca5a5',
+                boxShadow: `0 0 0 2px ${passesAll ? '#d1fae5' : '#fee2e2'}`,
+              }}
             >
-              <span style={{ color: fixedFg }} className="font-bold text-xl leading-none drop-shadow-sm truncate px-1 max-w-full">
+              <span style={{ color: customFg }} className="font-bold text-xl leading-none drop-shadow-sm truncate px-1 max-w-full">
                 {element.text.trim().substring(0, 4) || 'あAa'}
               </span>
             </div>
-            <div className="flex justify-between text-[10px] text-slate-500 mt-1 uppercase font-mono">
-              <span className="text-emerald-600 font-bold bg-emerald-50 px-1 rounded">FG: {fixedFg}</span>
-              <span>BG: {bg}</span>
+            <div className="flex justify-between text-[10px] mt-1 uppercase font-mono">
+              <span className="font-bold px-1 rounded" style={{ color: passesAll ? '#059669' : '#92400e', background: passesAll ? '#d1fae5' : '#fef3c7' }}>
+                FG: {customFg}
+              </span>
+              <span className="text-slate-500">BG: {bg}</span>
             </div>
           </div>
         </div>
 
-        {/* Explanation */}
+        {/* Reason */}
         <div className="text-sm text-slate-600 leading-relaxed border-l-2 border-emerald-400 pl-3">
           {recommendation.reason}
+        </div>
+
+        {/* ─── Manual Adjustment Section ─── */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+          <div className="px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5" /> 文字色を手動調整
+            </span>
+            {isModified && (
+              <button
+                onClick={handleReset}
+                className="text-[10px] text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
+                title="提案色に戻す"
+              >
+                <RefreshCw className="w-2.5 h-2.5" /> リセット
+              </button>
+            )}
+          </div>
+
+          <div className="p-3 flex flex-col gap-3">
+            {/* Color picker + hex input */}
+            <div className="flex items-center gap-3">
+              <label className="relative cursor-pointer flex-shrink-0">
+                {/* Swatch that opens native picker */}
+                <div
+                  className="w-10 h-10 rounded-lg border-2 border-white shadow-md ring-1 ring-slate-200 transition-transform hover:scale-105"
+                  style={{ backgroundColor: customFg }}
+                />
+                <input
+                  type="color"
+                  value={customFg}
+                  onChange={handlePickerChange}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  aria-label="文字色を選択"
+                />
+              </label>
+              <div className="flex-1 flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-mono">#</span>
+                <input
+                  type="text"
+                  value={hexInput.replace(/^#/, '')}
+                  onChange={handleHexInputChange}
+                  maxLength={6}
+                  placeholder="例: 1a5c2f"
+                  className="w-full font-mono text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 uppercase"
+                  aria-label="HEXカラーコード入力"
+                />
+              </div>
+            </div>
+
+            {/* Live metrics */}
+            {liveWcag && liveIso && (
+              <div className="font-mono text-[10px] flex flex-col gap-1 bg-white border border-slate-100 rounded-lg p-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">WCAGコントラスト比</span>
+                  <span className={`font-bold ${liveWcag.passesAA ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {liveWcag.ratio.toFixed(2)} : 1 {liveWcag.passesAA ? '✓ AA' : '✗ AA'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">明度差 ΔL*</span>
+                  <span className={`font-bold ${liveIso.deltaL >= 20 ? 'text-emerald-600' : 'text-amber-500'}`}>
+                    {liveIso.deltaL.toFixed(1)} {liveIso.deltaL >= 20 ? '✓' : '✗'} (目標 20)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">CIEDE2000 / P/D型 ΔE₀₀</span>
+                  <span className={`font-bold ${liveIso.deltaE_PD >= 18 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {liveIso.deltaE_PD.toFixed(1)} {liveIso.deltaE_PD >= 18 ? '✓' : '✗'} (目標 18)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">CIEDE2000 / T型 ΔE₀₀</span>
+                  <span className={`font-bold ${liveIso.deltaE_T >= 18 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {liveIso.deltaE_T.toFixed(1)} {liveIso.deltaE_T >= 18 ? '✓' : '✗'} (目標 18)
+                  </span>
+                </div>
+                <div className={`mt-1 pt-1 border-t border-slate-100 flex items-center justify-center gap-1 font-bold text-[11px] ${passesAll ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {passesAll ? '✓ すべての基準をクリアしています' : '✗ いずれかの基準が未達です'}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Details section */}
         {issue.metrics && (
           <details className="mt-1 text-sm text-slate-600 bg-slate-50 rounded-lg border">
             <summary className="cursor-pointer px-3 py-2 font-bold hover:bg-slate-100 outline-none select-none">詳細・計算値 (変更前後)</summary>
-            
-            {/* Scrollable container for the deep math outputs */}
+
             <div className="px-3 py-3 border-t flex flex-col gap-5 font-mono text-[11px] overflow-y-auto max-h-[250px] shadow-inner bg-white">
-              
-              {/* CURRENT METRICS */}
+
+              {/* CURRENT (original) METRICS */}
               <div>
                 <h4 className="font-bold text-slate-500 mb-2 border-b pb-1 flex justify-between">
                   <span>▼ 現状の判定</span>
@@ -109,7 +262,6 @@ export default function RecommendationCard({ element, issue, recommendation }: R
                     <span className={issue.metrics.passesIso24505 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
                       {issue.metrics.passesIso24505 ? 'Pass' : 'Fail'}
                     </span>
-                    
                     {issue.metrics.isoDetails && (
                       <div className="text-[10px] bg-slate-50 p-1.5 rounded flex flex-col gap-0.5 mt-0.5 w-full text-slate-500 border border-slate-100">
                         <div className="flex justify-between">
@@ -134,15 +286,13 @@ export default function RecommendationCard({ element, issue, recommendation }: R
                 </div>
               </div>
 
-              {/* NEW METRICS (Computed dynamically) */}
+              {/* SUGGESTED METRICS */}
               {(() => {
                 const parsedBg = parseHex(bg);
                 const parsedNewFg = parseHex(fixedFg);
                 if (!parsedBg || !parsedNewFg) return null;
-                
                 const newWcag = checkWcagCompliance(parsedNewFg, parsedBg);
                 const newIso = checkIsoCompliance(parsedNewFg, parsedBg);
-
                 return (
                   <div>
                     <h4 className="font-bold text-emerald-600 mb-2 border-b border-emerald-100 pb-1 flex justify-between">
@@ -161,7 +311,6 @@ export default function RecommendationCard({ element, issue, recommendation }: R
                         <span className={newIso.passesIso24505 ? "text-emerald-600 font-bold" : "text-slate-600 font-bold"}>
                           {newIso.passesIso24505 ? 'Pass' : 'Fail'}
                         </span>
-                        
                         <div className="text-[10px] bg-emerald-50/50 p-1.5 rounded flex flex-col gap-0.5 mt-0.5 w-full text-slate-600 border border-emerald-50">
                           <div className="flex justify-between">
                             <span>明度差 ΔL*:</span>
@@ -185,17 +334,23 @@ export default function RecommendationCard({ element, issue, recommendation }: R
                   </div>
                 );
               })()}
-
             </div>
           </details>
         )}
 
-        {/* Action */}
-        <button 
+        {/* Action: copy current custom color */}
+        <button
           onClick={handleCopy}
-          className="mt-2 w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-lg text-sm font-bold transition-colors shadow focus:ring-4 focus:ring-slate-100"
+          className={`mt-2 w-full flex items-center justify-center gap-2 text-white py-2.5 rounded-lg text-sm font-bold transition-all shadow focus:ring-4 ${
+            passesAll
+              ? 'bg-emerald-700 hover:bg-emerald-800 focus:ring-emerald-100'
+              : 'bg-slate-700 hover:bg-slate-800 focus:ring-slate-100'
+          }`}
         >
-          <Copy className="w-4 h-4" /> 新しい文字色 ({fixedFg}) をコピー
+          {copied
+            ? <><CheckCircle2 className="w-4 h-4" /> コピーしました！</>
+            : <><Copy className="w-4 h-4" /> {isModified ? '調整した文字色' : '提案する文字色'} ({customFg}) をコピー</>
+          }
         </button>
       </div>
     </div>
