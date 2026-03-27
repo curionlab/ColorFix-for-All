@@ -1,0 +1,21 @@
+{
+  "name": "@colorfix/worker",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@colorfix/core": "*",
+    "@colorfix/schemas": "*",
+    "hono": "^4.0.0",
+    "@hono/zod-validator": "^0.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0",
+    "@cloudflare/workers-types": "^4.20240308.0"
+  }
+}

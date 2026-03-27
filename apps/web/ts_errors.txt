@@ -1,0 +1,12 @@
+src/components/PdfOverlayCanvas.tsx(2,15): error TS2305: Module '"@colorfix/schemas"' has no exported member 'ExtractedTextElement'.
+src/components/PdfOverlayCanvas.tsx(61,44): error TS2339: Property 'elementId' does not exist on type '{ message: string; id: string; kind: "contrast" | "ambiguity" | "color-only-meaning"; severity: "high" | "medium" | "low"; targetElementId: string; actualColors: { background: string; foreground: string; }; selectorHint?: string | undefined; metrics?: { ...; } | undefined; }'.
+src/components/RecommendationCard.tsx(2,15): error TS2305: Module '"@colorfix/schemas"' has no exported member 'ExtractedTextElement'.
+src/components/RecommendationCard.tsx(12,29): error TS2339: Property 'originalFg' does not exist on type '{ issueId: string; mode: "balanced" | "brand" | "readability"; replacements: { from: string; to: string; }[]; scores: { accessibility: number; brandPreservation: number; overall: number; }; reason: string; cssPatch: string; }'.
+src/components/RecommendationCard.tsx(13,29): error TS2339: Property 'originalBg' does not exist on type '{ issueId: string; mode: "balanced" | "brand" | "readability"; replacements: { from: string; to: string; }[]; scores: { accessibility: number; brandPreservation: number; overall: number; }; reason: string; cssPatch: string; }'.
+src/components/RecommendationCard.tsx(14,34): error TS2339: Property 'suggestedFg' does not exist on type '{ issueId: string; mode: "balanced" | "brand" | "readability"; replacements: { from: string; to: string; }[]; scores: { accessibility: number; brandPreservation: number; overall: number; }; reason: string; cssPatch: string; }'.
+src/components/WorkspaceLayout.tsx(2,15): error TS2305: Module '"@colorfix/schemas"' has no exported member 'AnalysisReport'.
+src/components/WorkspaceLayout.tsx(2,31): error TS2305: Module '"@colorfix/schemas"' has no exported member 'ExtractedTextElement'.
+src/components/WorkspaceLayout.tsx(101,44): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/components/WorkspaceLayout.tsx(102,48): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/WorkspaceLayout.tsx(103,67): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/lib/pdf-extractor.ts(3,15): error TS2305: Module '"@colorfix/schemas"' has no exported member 'ExtractedTextElement'.

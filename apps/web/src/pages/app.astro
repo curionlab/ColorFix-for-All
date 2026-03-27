@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import WorkspaceLayout from '../components/WorkspaceLayout';
+---
+
+<Layout title="ColorFix for All - ワークスペース">
+  <div class="flex-grow flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+    <WorkspaceLayout client:only="react" />
+  </div>
+</Layout>

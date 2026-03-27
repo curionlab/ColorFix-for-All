@@ -1,0 +1,40 @@
+---
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="A tool that proposes minimal color changes to ensure text readability for diverse color vision without destroying the original brand design." />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+	</head>
+	<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+    <header class="border-b bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <a href="/" class="font-bold text-xl tracking-tight text-blue-600">ColorFix<span class="text-slate-800"> for All</span></a>
+        <nav class="flex gap-4">
+          <a href="/" class="text-sm font-medium text-slate-600 hover:text-slate-900">案内</a>
+          <a href="/app" class="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">ツールを起動</a>
+        </nav>
+      </div>
+    </header>
+		
+    <main class="flex-grow">
+      <slot />
+    </main>
+
+    <footer class="bg-slate-100 border-t py-8 mt-12">
+      <div class="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+        &copy; {new Date().getFullYear()} ColorFix for All. Open source project.
+      </div>
+    </footer>
+	</body>
+</html>

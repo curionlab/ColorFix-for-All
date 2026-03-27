@@ -1,0 +1,24 @@
+---
+import Layout from '../layouts/Layout.astro';
+import TestRunner from '../components/TestRunner';
+---
+
+<Layout title="Color Extraction Debugger">
+  <div class="min-h-screen bg-slate-50 p-8">
+    <div class="max-w-5xl mx-auto">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-slate-800 mb-2">Automated Extraction Test</h1>
+        <p class="text-slate-600">
+          HTMLからPDF化した際の真の色（正解データ）と、ColorFixのCanvasピクセルサンプリング機能が
+          抽出した色が一致しているかを自動で検証する診断画面です。
+        </p>
+      </div>
+      
+      <TestRunner client:load />
+
+      <div class="mt-8 text-center">
+        <a href="/app" class="text-blue-600 hover:underline">← ワークスペースに戻る</a>
+      </div>
+    </div>
+  </div>
+</Layout>

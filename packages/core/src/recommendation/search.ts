@@ -1,0 +1,91 @@
+import { Issue, Recommendation } from '@colorfix/schemas';
+import { RecommendationContext, RecommendationStrategy, CandidateColor, RgbColor } from '../models/types';
+import { rgbToHsl, hslToRgb } from '../color/convert';
+import { toHex } from '../color/parse';
+import { rankRecommendations } from '../scoring/overall';
+import { buildRecommendationReason } from './explain';
+
+export function searchNearbyAccessibleColors(
+  baseColor: RgbColor,
+  context: RecommendationContext,
+  strategy: RecommendationStrategy
+): CandidateColor[] {
+  const candidates: CandidateColor[] = [];
+  const baseHsl = rgbToHsl(baseColor);
+  
+  const lSteps = [-60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 60];
+  const sSteps = [-30, -15, 0, 15, 30];
+  const hSteps = [-30, -15, 0, 15, 30];
+  
+  for (const dl of lSteps) {
+    for (const ds of sSteps) {
+      for (const dh of hSteps) {
+        if (dl === 0 && ds === 0 && dh === 0) continue; // Skip exact same color
+        
+        let newL = baseHsl.l + dl;
+        let newS = baseHsl.s + ds;
+        let newH = baseHsl.h + dh;
+        
+        newL = Math.max(0, Math.min(100, newL));
+        newS = Math.max(0, Math.min(100, newS));
+        if (newH < 0) newH += 360;
+        if (newH >= 360) newH -= 360;
+        
+        candidates.push({
+          value: hslToRgb({ h: newH, s: newS, l: newL }),
+          sourceIssueId: ''
+        });
+      }
+    }
+  }
+  
+  return candidates;
+}
+
+export function generateRecommendations(
+  issue: Issue,
+  context: RecommendationContext,
+  strategy: RecommendationStrategy
+): Recommendation[] {
+  const candidates = searchNearbyAccessibleColors(context.baseColor, context, strategy);
+  
+  const ranked = rankRecommendations(candidates, context, {
+    accessibility: strategy.weightAccessibility,
+    brand: strategy.weightBrand
+  });
+  
+  // Filter candidates that don't improve accessibility enough
+  const validCandidates = ranked.filter(r => r.scores.accessibility > 0.85); // High threshold for accessibility
+  
+  // Select top 3 that are visually distinct
+  const uniqueBest: typeof ranked = [];
+  const seenHex = new Set<string>();
+  
+  for (const cand of validCandidates) {
+    const hex = toHex(cand.candidate);
+    if (!seenHex.has(hex)) {
+      uniqueBest.push(cand);
+      seenHex.add(hex);
+    }
+    if (uniqueBest.length >= 3) break;
+  }
+  
+  if (uniqueBest.length === 0) {
+    return [];
+  }
+  
+  return uniqueBest.map(b => ({
+    issueId: issue.id,
+    mode: strategy.mode,
+    replacements: [
+      { from: toHex(context.baseColor), to: toHex(b.candidate) }
+    ],
+    scores: {
+      accessibility: Math.round(b.scores.accessibility * 100) / 100,
+      brandPreservation: Math.round(b.scores.brandPreservation * 100) / 100,
+      overall: Math.round(b.scores.overall * 100) / 100
+    },
+    reason: buildRecommendationReason(context.baseColor, b.candidate, b.scores),
+    cssPatch: `${issue.selectorHint || '#' + issue.targetElementId} {\n  ${context.fixedProperty}: ${toHex(b.candidate)};\n}`
+  }));
+}
