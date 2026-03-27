@@ -66,7 +66,7 @@ function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: 
   // Pick the significant cluster with the absolute largest difference from the background,
   // effectively ignoring the frequent gray anti-aliased edge pixels.
   const totalPixels = width * height;
-  const minFreq = Math.max(2, totalPixels * 0.015); // min 1.5% or 2 pixels
+  const minFreq = Math.max(1, totalPixels * 0.005); // Reduced threshold to 0.5% for thin text
   
   let bestFg = { r: bgR, g: bgG, b: bgB };
   let maxDiff = -1;
@@ -122,7 +122,7 @@ export async function extractPdf(file: File): Promise<{
   
   // For MVP, just process Page 1
   const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1.5 }); // Scale up for better pixel sampling
+  const viewport = page.getViewport({ scale: 2.0 }); // Increased scale for better pixel sampling
 
   // Create canvas for rendering
   const canvas = document.createElement('canvas');
@@ -192,7 +192,7 @@ export async function extractPdf(file: File): Promise<{
     }
   }
 
-  const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+  const thumbnailUrl = canvas.toDataURL('image/png');
 
   return {
     elements,
