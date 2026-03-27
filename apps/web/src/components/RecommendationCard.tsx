@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { ExtractedTextElement, Issue, Recommendation } from '@colorfix/schemas';
+import type { ExtractedTextElement, Issue, Recommendation } from '../types';
 import { checkWcagCompliance, checkIsoCompliance, parseHex } from '@colorfix/color-engine';
 import { ArrowRight, Copy, CheckCircle2, AlertTriangle } from 'lucide-react';
 
@@ -60,11 +60,11 @@ export default function RecommendationCard({ element, issue, recommendation }: R
             <div className="absolute top-1/2 -left-3 -translate-y-1/2 bg-white rounded-full p-0.5 shadow-sm border z-10">
               <ArrowRight className="w-3 h-3 text-slate-400" />
             </div>
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1">
+            <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" /> 提案する色
             </span>
             <div 
-              className="h-16 rounded-md border border-blue-200 ring-2 ring-blue-50 ring-offset-1 shadow-sm flex items-center justify-center p-2 overflow-hidden"
+              className="h-16 rounded-md border border-emerald-200 ring-2 ring-emerald-50 ring-offset-1 shadow-sm flex items-center justify-center p-2 overflow-hidden"
               style={{ backgroundColor: bg }}
             >
               <span style={{ color: fixedFg }} className="font-bold text-xl leading-none drop-shadow-sm truncate px-1 max-w-full">
@@ -72,14 +72,14 @@ export default function RecommendationCard({ element, issue, recommendation }: R
               </span>
             </div>
             <div className="flex justify-between text-[10px] text-slate-500 mt-1 uppercase font-mono">
-              <span className="text-blue-600 font-bold bg-blue-50 px-1 rounded">FG: {fixedFg}</span>
+              <span className="text-emerald-600 font-bold bg-emerald-50 px-1 rounded">FG: {fixedFg}</span>
               <span>BG: {bg}</span>
             </div>
           </div>
         </div>
 
         {/* Explanation */}
-        <div className="text-sm text-slate-600 leading-relaxed border-l-2 border-blue-400 pl-3">
+        <div className="text-sm text-slate-600 leading-relaxed border-l-2 border-emerald-400 pl-3">
           {recommendation.reason}
         </div>
 
@@ -145,39 +145,39 @@ export default function RecommendationCard({ element, issue, recommendation }: R
 
                 return (
                   <div>
-                    <h4 className="font-bold text-blue-600 mb-2 border-b border-blue-100 pb-1 flex justify-between">
+                    <h4 className="font-bold text-emerald-600 mb-2 border-b border-emerald-100 pb-1 flex justify-between">
                       <span>▼ 修正後の判定 (提案色)</span>
-                      {newWcag.passesAA && newIso.passesIso24505 ? <span className="text-blue-500">PASS ✓</span> : <span className="text-red-500">NOT OPTIMAL</span>}
+                      {newWcag.passesAA && newIso.passesIso24505 ? <span className="text-emerald-500">PASS ✓</span> : <span className="text-red-500">NOT OPTIMAL</span>}
                     </h4>
                     <div className="flex justify-between items-center">
                       <span>WCAG コントラスト比:</span>
-                      <span className={newWcag.passesAA ? "text-blue-600 font-bold" : "text-slate-600 font-bold"}>
+                      <span className={newWcag.passesAA ? "text-emerald-600 font-bold" : "text-slate-600 font-bold"}>
                         {newWcag.ratio?.toFixed(2)} : 1
                       </span>
                     </div>
                     <div className="flex justify-between items-start mt-2 pt-2 border-t border-slate-100">
                       <span className="flex-shrink-0">ISO 24505-2 原則:</span>
                       <div className="flex flex-col items-end gap-1 text-right min-w-[150px]">
-                        <span className={newIso.passesIso24505 ? "text-blue-600 font-bold" : "text-slate-600 font-bold"}>
+                        <span className={newIso.passesIso24505 ? "text-emerald-600 font-bold" : "text-slate-600 font-bold"}>
                           {newIso.passesIso24505 ? 'Pass' : 'Fail'}
                         </span>
                         
-                        <div className="text-[10px] bg-blue-50/50 p-1.5 rounded flex flex-col gap-0.5 mt-0.5 w-full text-slate-600 border border-blue-50">
+                        <div className="text-[10px] bg-emerald-50/50 p-1.5 rounded flex flex-col gap-0.5 mt-0.5 w-full text-slate-600 border border-emerald-50">
                           <div className="flex justify-between">
                             <span>明度差 ΔL*:</span>
-                            <span className={newIso.deltaL >= 40.0 ? "text-blue-700" : ""}>{newIso.deltaL?.toFixed(1)}</span>
+                            <span className={newIso.deltaL >= 40.0 ? "text-emerald-700" : ""}>{newIso.deltaL?.toFixed(1)}</span>
                           </div>
-                          <div className="flex justify-between border-t border-blue-50 mt-1 pt-1">
+                          <div className="flex justify-between border-t border-emerald-50 mt-1 pt-1">
                             <span>通常色差 ΔE:</span>
                             <span>{newIso.normalDeltaE?.toFixed(1)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>P/D型(赤緑) 推定ΔE:</span>
-                            <span className={newIso.deltaE_PD >= 30.0 ? "text-blue-700" : ""}>{newIso.deltaE_PD?.toFixed(1)}</span>
+                            <span className={newIso.deltaE_PD >= 30.0 ? "text-emerald-700" : ""}>{newIso.deltaE_PD?.toFixed(1)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>T型(青黄) 推定ΔE:</span>
-                            <span className={newIso.deltaE_T >= 30.0 ? "text-blue-700" : ""}>{newIso.deltaE_T?.toFixed(1)}</span>
+                            <span className={newIso.deltaE_T >= 30.0 ? "text-emerald-700" : ""}>{newIso.deltaE_T?.toFixed(1)}</span>
                           </div>
                         </div>
                       </div>

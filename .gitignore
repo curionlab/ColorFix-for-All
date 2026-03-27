@@ -33,3 +33,6 @@ yarn-error.log*
 dev/
 *.pdf
 test.pdf
+
+# old version
+old_version/    

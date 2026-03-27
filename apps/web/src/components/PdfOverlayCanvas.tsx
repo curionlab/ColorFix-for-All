@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { ExtractedTextElement, Issue } from '@colorfix/schemas';
+import type { ExtractedTextElement, Issue } from '../types';
 
 interface PdfOverlayCanvasProps {
   imageUrl: string;

@@ -12,7 +12,6 @@
   "dependencies": {
     "@astrojs/react": "^3.0.0",
     "@astrojs/tailwind": "^6.0.2",
-    "@colorfix/schemas": "*",
     "@colorfix/color-engine": "*",
     "pdfjs-dist": "^4.0.0",
     "astro": "^4.0.0",

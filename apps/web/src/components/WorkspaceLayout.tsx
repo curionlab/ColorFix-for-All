@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { AnalysisReport, ExtractedTextElement } from '@colorfix/schemas';
+import type { AnalysisReport, ExtractedTextElement } from '../types';
 import { checkWcagCompliance, checkIsoCompliance, findAccessibleColor, parseHex } from '@colorfix/color-engine';
 import FileDropzone from './FileDropzone';
 import PdfOverlayCanvas from './PdfOverlayCanvas';
@@ -156,7 +156,7 @@ export default function WorkspaceLayout() {
               <span className="text-slate-500 text-xs">{selectedIssueIndex + 1} / {report.issues.length}</span>
               <button 
                 onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex + 1) % report.issues.length].elementId)}
-                className="px-2 py-1 bg-blue-600 text-white border border-blue-700 rounded hover:bg-blue-700"
+                className="px-2 py-1 bg-emerald-600 text-white border border-emerald-700 rounded hover:bg-emerald-700"
               >
                 次へ
               </button>

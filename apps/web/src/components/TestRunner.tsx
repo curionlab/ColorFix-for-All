@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { extractPdf } from '../lib/pdf-extractor';
-import type { ExtractedTextElement } from '@colorfix/schemas';
+import type { ExtractedTextElement } from '../types';
 import { parseHex } from '@colorfix/color-engine';
 
 export default function TestRunner() {

@@ -1,6 +1,6 @@
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import type { TextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
-import type { ExtractedTextElement } from '@colorfix/schemas';
+import type { ExtractedTextElement } from '../types';
 import { toHex } from '@colorfix/color-engine';
 
 // Use local worker or CDN. For simplicity, we can load from CDN in production
