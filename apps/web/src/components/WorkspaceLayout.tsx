@@ -56,7 +56,7 @@ export default function WorkspaceLayout() {
               if (iso.isProblematicPairing) {
                 detailedReason = '（赤と緑など）色覚多様性の視界では似通って見えてしまう配色です。ISO原則に基づき、色相に依存しなくても区別できる十分な明度差（Lab色空間）を確保するよう調整しました。';
               } else if (!iso.luminanceContrastPasses) {
-                detailedReason = '高齢者やロービジョン（弱視）の方でもはっきり文字の形を認識できるよう、ISO 24505-2の原則に基づき、Lab色空間において十分な明度差（ΔL* >= 40）を確保するよう明度を調整しました。';
+                detailedReason = '高齢者やロービジョン（弱視）の方でもはっきり文字の形を認識できるよう、ISO 24505-2の原則に基づき、Lab色空間において十分な明度差（ΔL* >= 20）を確保するよう明度を調整しました。';
               } else if (!wcag.passesAA) {
                 detailedReason = 'WCAG AA基準（コントラスト比 4.5 以上）を満たすよう、色相を変えずに文字の明度を調整して視認性を高めました。';
               }
@@ -192,19 +192,19 @@ export default function WorkspaceLayout() {
                     <span className="font-bold">{wcag.ratio.toFixed(2)} : 1</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>明度差 ΔL* (目標 40.0):</span>
+                    <span>明度差 ΔL* (目標 20.0):</span>
                     <span className="font-bold">{iso.deltaL?.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between border-t border-green-200 mt-1 pt-1">
-                    <span>通常色差 ΔE:</span>
+                    <span>通常色差 CIEDE2000 ΔE₀₀:</span>
                     <span className="font-bold">{iso.normalDeltaE?.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>P/D型ΔE推定 (目標 30.0):</span>
+                    <span>P/D型ΔE₀₀推定 (目標 18.0):</span>
                     <span className="font-bold">{iso.deltaE_PD?.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>T型ΔE推定 (目標 30.0):</span>
+                    <span>T型ΔE₀₀推定 (目標 18.0):</span>
                     <span className="font-bold">{iso.deltaE_T?.toFixed(1)}</span>
                   </div>
                 </div>

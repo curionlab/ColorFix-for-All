@@ -114,19 +114,19 @@ export default function RecommendationCard({ element, issue, recommendation }: R
                       <div className="text-[10px] bg-slate-50 p-1.5 rounded flex flex-col gap-0.5 mt-0.5 w-full text-slate-500 border border-slate-100">
                         <div className="flex justify-between">
                           <span>明度差 ΔL*:</span>
-                          <span className={issue.metrics.isoDetails.deltaL >= 40.0 ? "" : "text-red-500 font-bold"}>{issue.metrics.isoDetails.deltaL?.toFixed(1)}</span>
+                          <span className={issue.metrics.isoDetails.deltaL >= 20.0 ? "" : "text-red-500 font-bold"}>{issue.metrics.isoDetails.deltaL?.toFixed(1)}</span>
                         </div>
                         <div className="flex justify-between border-t border-slate-100 mt-1 pt-1">
-                          <span>通常色差 ΔE:</span>
+                          <span>通常色差 CIEDE2000 ΔE₀₀:</span>
                           <span>{issue.metrics.isoDetails.normalDeltaE?.toFixed(1)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>P/D型(赤緑) 推定ΔE:</span>
-                          <span className={issue.metrics.isoDetails.deltaE_PD >= 30.0 ? "" : "text-red-500 font-bold"}>{issue.metrics.isoDetails.deltaE_PD?.toFixed(1)}</span>
+                          <span>P/D型(赤緑) 推定ΔE₀₀:</span>
+                          <span className={issue.metrics.isoDetails.deltaE_PD >= 18.0 ? "" : "text-red-500 font-bold"}>{issue.metrics.isoDetails.deltaE_PD?.toFixed(1)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>T型(青黄) 推定ΔE:</span>
-                          <span className={issue.metrics.isoDetails.deltaE_T >= 30.0 ? "" : "text-red-500 font-bold"}>{issue.metrics.isoDetails.deltaE_T?.toFixed(1)}</span>
+                          <span>T型(青黄) 推定ΔE₀₀:</span>
+                          <span className={issue.metrics.isoDetails.deltaE_T >= 18.0 ? "" : "text-red-500 font-bold"}>{issue.metrics.isoDetails.deltaE_T?.toFixed(1)}</span>
                         </div>
                       </div>
                     )}
@@ -165,19 +165,19 @@ export default function RecommendationCard({ element, issue, recommendation }: R
                         <div className="text-[10px] bg-emerald-50/50 p-1.5 rounded flex flex-col gap-0.5 mt-0.5 w-full text-slate-600 border border-emerald-50">
                           <div className="flex justify-between">
                             <span>明度差 ΔL*:</span>
-                            <span className={newIso.deltaL >= 40.0 ? "text-emerald-700" : ""}>{newIso.deltaL?.toFixed(1)}</span>
+                            <span className={newIso.deltaL >= 20.0 ? "text-emerald-700" : ""}>{newIso.deltaL?.toFixed(1)}</span>
                           </div>
                           <div className="flex justify-between border-t border-emerald-50 mt-1 pt-1">
-                            <span>通常色差 ΔE:</span>
+                            <span>通常色差 CIEDE2000 ΔE₀₀:</span>
                             <span>{newIso.normalDeltaE?.toFixed(1)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>P/D型(赤緑) 推定ΔE:</span>
-                            <span className={newIso.deltaE_PD >= 30.0 ? "text-emerald-700" : ""}>{newIso.deltaE_PD?.toFixed(1)}</span>
+                            <span>P/D型(赤緑) 推定ΔE₀₀:</span>
+                            <span className={newIso.deltaE_PD >= 18.0 ? "text-emerald-700" : ""}>{newIso.deltaE_PD?.toFixed(1)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>T型(青黄) 推定ΔE:</span>
-                            <span className={newIso.deltaE_T >= 30.0 ? "text-emerald-700" : ""}>{newIso.deltaE_T?.toFixed(1)}</span>
+                            <span>T型(青黄) 推定ΔE₀₀:</span>
+                            <span className={newIso.deltaE_T >= 18.0 ? "text-emerald-700" : ""}>{newIso.deltaE_T?.toFixed(1)}</span>
                           </div>
                         </div>
                       </div>
