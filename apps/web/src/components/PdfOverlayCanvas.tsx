@@ -11,7 +11,8 @@ interface PdfOverlayCanvasProps {
   recommendations: Recommendation[];
   selectedElementId: string | null;
   onSelectElement: (id: string) => void;
-  cvdType?: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'recommended';
+  previewSource?: 'original' | 'recommended';
+  cvdSimulation?: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia';
   customResultsMap?: Record<string, string>;
 }
 
@@ -24,7 +25,8 @@ export default function PdfOverlayCanvas({
   recommendations,
   selectedElementId,
   onSelectElement,
-  cvdType = 'none',
+  previewSource = 'original',
+  cvdSimulation = 'none',
   customResultsMap = {}
 }: PdfOverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,7 +57,8 @@ export default function PdfOverlayCanvas({
 
   // Effect to generate simulated image
   useEffect(() => {
-    if (cvdType === 'none') {
+    // If no simulation and original source, just use the original image
+    if (previewSource === 'original' && cvdSimulation === 'none') {
       setSimulatedImageUrl(null);
       return;
     }
@@ -73,7 +76,6 @@ export default function PdfOverlayCanvas({
 
         if (isCancelled) return;
 
-        // Use integer dimensions for the canvas to avoid sub-pixel indexing errors
         const iWidth = Math.floor(originalWidth);
         const iHeight = Math.floor(originalHeight);
 
@@ -81,15 +83,13 @@ export default function PdfOverlayCanvas({
         canvas.width = iWidth;
         canvas.height = iHeight;
         const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-        // Ensure image is drawn to fit the integer dimensions
         ctx.drawImage(img, 0, 0, iWidth, iHeight);
 
         const imageData = ctx.getImageData(0, 0, iWidth, iHeight);
         const { data, width: dataW, height: dataH } = imageData;
         
-        if (cvdType === 'recommended') {
-          let totalReplaced = 0;
-          
+        // 1. Apply "Recommended" color replacement if requested
+        if (previewSource === 'recommended') {
           elements.forEach(el => {
             const recommendation = recommendations.find(r => r.issueId === `issue-${el.id}`);
             if (!recommendation) return;
@@ -134,31 +134,31 @@ export default function PdfOverlayCanvas({
                   let t = (pR*vR + pG*vG + pB*vB) / vLenSq;
                   if (t < 0) t = 0;
                   if (t > 1) t = 1;
-
                   if (dFgSq < 800) t = 1.0;
 
                   data[i] = Math.round(t * targetFg.r + (1 - t) * originalBg.r);
                   data[i+1] = Math.round(t * targetFg.g + (1 - t) * originalBg.g);
                   data[i+2] = Math.round(t * targetFg.b + (1 - t) * originalBg.b);
-                  totalReplaced++;
                 }
               }
             }
           });
-          console.log(`[PdfOverlayCanvas] Replaced ${totalReplaced} pixels in Recommended mode.`);
-          ctx.putImageData(imageData, 0, 0);
-        } else {
+        }
+
+        // 2. Apply CVD Simulation if requested (operates on the potentially modified data)
+        if (cvdSimulation !== 'none') {
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i+1];
             const b = data[i+2];
-            const simulated = simulateCVD({ r, g, b }, cvdType as any);
+            const simulated = simulateCVD({ r, g, b }, cvdSimulation as any);
             data[i] = simulated.r;
             data[i+1] = simulated.g;
             data[i+2] = simulated.b;
           }
-          ctx.putImageData(imageData, 0, 0);
         }
+
+        ctx.putImageData(imageData, 0, 0);
 
         if (isCancelled) return;
         setSimulatedImageUrl(canvas.toDataURL('image/png'));
@@ -171,10 +171,12 @@ export default function PdfOverlayCanvas({
 
     processSimulation();
     return () => { isCancelled = true; };
-  }, [imageUrl, cvdType, originalWidth, originalHeight, recommendations, customResultsMap, elements, issues]);
+  }, [imageUrl, previewSource, cvdSimulation, originalWidth, originalHeight, recommendations, customResultsMap, elements, issues]);
 
   const finalImageUrl = simulatedImageUrl || imageUrl;
-  const finalShowOverlays = cvdType === 'none';
+  // Bounding boxes are only useful in the "original" view for selecting elements
+  // But we show them in "none" CVD simulation mode mainly.
+  const showBoxOverlays = cvdSimulation === 'none';
 
   return (
     <div className="relative">
@@ -198,19 +200,22 @@ export default function PdfOverlayCanvas({
           </div>
         )}
 
-        {/* Overlay boxes - only show in 'none' mode */}
-        {finalShowOverlays && elements.map((el) => {
+        {/* Overlay boxes - only show in 'none' simulation mode to keep view clean */}
+        {showBoxOverlays && elements.map((el) => {
           const isIssue = issues.some(i => i.elementId === el.id);
           const isSelected = selectedElementId === el.id;
           
-          let boxClass = "absolute cursor-pointer transition-all border-2 rounded-[2px] ";
+          let boxClass = "absolute cursor-pointer transition-all border-2 rounded-[1px] ";
           
           if (isSelected) {
-            boxClass += "border-blue-500 bg-blue-500/20 z-20 ";
+            // Selected box: semi-transparent blue border, NO fill as per user request
+            boxClass += "border-blue-500 bg-transparent z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)] ";
           } else if (isIssue) {
-            boxClass += "border-red-400 bg-red-400/20 hover:bg-red-400/40 z-10 ";
+            // Issue box: translucent red border, NO fill
+            boxClass += "border-red-400/80 bg-transparent hover:border-red-500 hover:bg-red-500/5 z-10 ";
           } else {
-            boxClass += "border-transparent hover:border-green-400 hover:bg-green-400/20 z-0 ";
+            // Normal box: hidden unless hovered
+            boxClass += "border-transparent hover:border-emerald-400 hover:bg-emerald-400/5 z-0 ";
           }
 
           return (

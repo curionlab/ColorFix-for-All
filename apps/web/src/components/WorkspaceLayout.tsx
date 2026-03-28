@@ -13,7 +13,8 @@ export default function WorkspaceLayout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfCanvasUrl, setPdfCanvasUrl] = useState<string | null>(null);
   const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 1000 });
-  const [cvdMode, setCvdMode] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'recommended'>('none');
+  const [previewSource, setPreviewSource] = useState<'original' | 'recommended'>('original');
+  const [cvdSimulation, setCvdSimulation] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'>('none');
   const [customResultsMap, setCustomResultsMap] = useState<Record<string, string>>({}); // elementId -> hex
 
   /** Download all color recommendations as a structured JSON file */
@@ -233,7 +234,8 @@ export default function WorkspaceLayout() {
               recommendations={report.recommendations}
               selectedElementId={selectedElementId}
               onSelectElement={setSelectedElementId}
-              cvdType={cvdMode}
+              previewSource={previewSource}
+              cvdSimulation={cvdSimulation}
               customResultsMap={customResultsMap}
             />
           )}
@@ -244,39 +246,47 @@ export default function WorkspaceLayout() {
       <div className="w-[400px] flex-shrink-0 bg-white border rounded-xl shadow-sm flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b bg-slate-50 font-bold text-slate-800 flex justify-between items-center">
           <span>修正の提案</span>
-          <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] items-center">
-            <button 
-              onClick={() => setCvdMode('none')}
-              className={`px-2 py-1 rounded-md transition-all ${cvdMode === 'none' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              通常
-            </button>
-            <button 
-              onClick={() => setCvdMode('protanopia')}
-              className={`px-2 py-1 rounded-md transition-all ${cvdMode === 'protanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              P型
-            </button>
-            <button 
-              onClick={() => setCvdMode('deuteranopia')}
-              className={`px-2 py-1 rounded-md transition-all ${cvdMode === 'deuteranopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              D型
-            </button>
-            <button 
-              onClick={() => setCvdMode('tritanopia')}
-              className={`px-2 py-1 rounded-md transition-all ${cvdMode === 'tritanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              T型
-            </button>
-            <div className="w-[1px] h-3 bg-slate-300 mx-0.5" />
-            <button 
-              onClick={() => setCvdMode('recommended')}
-              className={`px-2 py-1 rounded-md transition-all ${cvdMode === 'recommended' ? 'bg-emerald-500 text-white font-bold shadow-sm' : 'text-emerald-600 hover:bg-emerald-50'}`}
-              title="修正後の色でプレビュー"
-            >
-              修正後
-            </button>
+          <div className="flex flex-col gap-2 items-end">
+            <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] items-center">
+              <button 
+                onClick={() => setPreviewSource('original')}
+                className={`px-3 py-1 rounded-md transition-all ${previewSource === 'original' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                元の画像
+              </button>
+              <button 
+                onClick={() => setPreviewSource('recommended')}
+                className={`px-3 py-1 rounded-md transition-all ${previewSource === 'recommended' ? 'bg-emerald-500 text-white font-bold shadow-sm' : 'text-emerald-600 hover:bg-emerald-100'}`}
+              >
+                修正後
+              </button>
+            </div>
+            <div className="flex bg-slate-100 p-0.5 rounded-lg text-[9px] items-center border border-slate-200">
+              <button 
+                onClick={() => setCvdSimulation('none')}
+                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'none' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                通常
+              </button>
+              <button 
+                onClick={() => setCvdSimulation('protanopia')}
+                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'protanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                P型
+              </button>
+              <button 
+                onClick={() => setCvdSimulation('deuteranopia')}
+                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'deuteranopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                D型
+              </button>
+              <button 
+                onClick={() => setCvdSimulation('tritanopia')}
+                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'tritanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                T型
+              </button>
+            </div>
           </div>
           {report.issues.length > 0 && selectedIssueIndex >= 0 && (
             <div className="flex gap-2 text-sm font-normal items-center">
