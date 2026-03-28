@@ -15,6 +15,7 @@ export default function WorkspaceLayout() {
   const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 1000 });
   const [previewSource, setPreviewSource] = useState<'original' | 'recommended'>('original');
   const [cvdSimulation, setCvdSimulation] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'>('none');
+  const [showOverlays, setShowOverlays] = useState(true);
   const [customResultsMap, setCustomResultsMap] = useState<Record<string, string>>({}); // elementId -> hex
 
   /** Download all color recommendations as a structured JSON file */
@@ -199,28 +200,66 @@ export default function WorkspaceLayout() {
     <div className="flex-1 flex flex-row overflow-hidden bg-slate-100 p-4 gap-4">
       {/* Left Pane: Visual Canvas */}
       <div className="flex-1 rounded-xl shadow-sm border bg-white overflow-hidden relative flex flex-col">
-        <div className="px-4 py-3 border-b bg-slate-50 text-sm font-medium flex justify-between items-center">
-          <span className="text-slate-700 truncate">{report.fileName}</span>
-          <div className="flex items-center gap-2">
-            <span className="text-red-600 bg-red-100 px-2 py-1 rounded text-xs font-bold">{report.issues.length} 件のエラー</span>
-            {report.recommendations.length > 0 && (
-              <div className="flex gap-1">
-                <button
-                  onClick={handleExportJson}
-                  title="推奨色マップを JSON でエクスポート"
-                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold transition-colors"
-                >
-                  <Download className="w-3 h-3" /> JSON
-                </button>
-                <button
-                  onClick={handleExportCsv}
-                  title="推奨色マップを CSV でエクスポート"
-                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 font-bold transition-colors"
-                >
-                  <Download className="w-3 h-3" /> CSV
-                </button>
-              </div>
-            )}
+        <div className="px-4 py-3 border-b bg-slate-50 text-sm font-medium flex flex-wrap gap-4 items-center justify-between">
+          <span className="text-slate-700 truncate min-w-[120px]">{report.fileName}</span>
+          
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Highlights Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer select-none border-r pr-4">
+              <input 
+                type="checkbox" 
+                checked={showOverlays} 
+                onChange={e => setShowOverlays(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-slate-600 font-bold">ハイライト表示</span>
+            </label>
+
+            {/* Source Selector */}
+            <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] items-center">
+              <button 
+                onClick={() => setPreviewSource('original')}
+                className={`px-3 py-1 rounded-md transition-all ${previewSource === 'original' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                元の画像
+              </button>
+              <button 
+                onClick={() => setPreviewSource('recommended')}
+                className={`px-3 py-1 rounded-md transition-all ${previewSource === 'recommended' ? 'bg-emerald-500 text-white font-bold shadow-sm' : 'text-emerald-600 hover:bg-emerald-100'}`}
+              >
+                修正後
+              </button>
+            </div>
+
+            {/* CVD Selector */}
+            <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] items-center border border-slate-300">
+              <button 
+                onClick={() => setCvdSimulation('none')}
+                className={`px-2 py-1 rounded-md transition-all ${cvdSimulation === 'none' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                通常
+              </button>
+              <button 
+                onClick={() => setCvdSimulation('protanopia')}
+                className={`px-2 py-1 rounded-md transition-all ${cvdSimulation === 'protanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                P型
+              </button>
+              <button 
+                onClick={() => setCvdSimulation('deuteranopia')}
+                className={`px-2 py-1 rounded-md transition-all ${cvdSimulation === 'deuteranopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                D型
+              </button>
+              <button 
+                onClick={() => setCvdSimulation('tritanopia')}
+                className={`px-2 py-1 rounded-md transition-all ${cvdSimulation === 'tritanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                T型
+              </button>
+            </div>
+            
+            <span className="text-red-600 bg-red-100 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">{report.issues.length} 件のエラー</span>
           </div>
         </div>
         <div className="flex-1 overflow-auto bg-slate-200 relative p-8 flex justify-center items-start">
@@ -237,6 +276,7 @@ export default function WorkspaceLayout() {
               previewSource={previewSource}
               cvdSimulation={cvdSimulation}
               customResultsMap={customResultsMap}
+              showOverlays={showOverlays}
             />
           )}
         </div>
@@ -244,67 +284,23 @@ export default function WorkspaceLayout() {
 
       {/* Right Pane: Issues & Fixes */}
       <div className="w-[400px] flex-shrink-0 bg-white border rounded-xl shadow-sm flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b bg-slate-50 font-bold text-slate-800 flex justify-between items-center">
+        <div className="px-4 py-3 border-b bg-slate-50 font-bold text-slate-800 flex justify-between items-center shadow-sm z-10">
           <span>修正の提案</span>
-          <div className="flex flex-col gap-2 items-end">
-            <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] items-center">
-              <button 
-                onClick={() => setPreviewSource('original')}
-                className={`px-3 py-1 rounded-md transition-all ${previewSource === 'original' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                元の画像
-              </button>
-              <button 
-                onClick={() => setPreviewSource('recommended')}
-                className={`px-3 py-1 rounded-md transition-all ${previewSource === 'recommended' ? 'bg-emerald-500 text-white font-bold shadow-sm' : 'text-emerald-600 hover:bg-emerald-100'}`}
-              >
-                修正後
-              </button>
-            </div>
-            <div className="flex bg-slate-100 p-0.5 rounded-lg text-[9px] items-center border border-slate-200">
-              <button 
-                onClick={() => setCvdSimulation('none')}
-                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'none' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                通常
-              </button>
-              <button 
-                onClick={() => setCvdSimulation('protanopia')}
-                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'protanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                P型
-              </button>
-              <button 
-                onClick={() => setCvdSimulation('deuteranopia')}
-                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'deuteranopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                D型
-              </button>
-              <button 
-                onClick={() => setCvdSimulation('tritanopia')}
-                className={`px-2 py-0.5 rounded-md transition-all ${cvdSimulation === 'tritanopia' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                T型
-              </button>
-            </div>
+          <div className="flex gap-2 text-sm font-normal items-center">
+            <button 
+              onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex - 1 + report.issues.length) % report.issues.length].elementId)}
+              className="px-2 py-1 bg-white border rounded hover:bg-slate-100 text-slate-600 transition-colors"
+            >
+              前へ
+            </button>
+            <span className="text-slate-500 text-[10px] font-mono">{selectedIssueIndex + 1} / {report.issues.length}</span>
+            <button 
+              onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex + 1) % report.issues.length].elementId)}
+              className="px-2 py-1 bg-emerald-600 text-white border border-emerald-700 rounded hover:bg-emerald-700 transition-colors"
+            >
+              次へ
+            </button>
           </div>
-          {report.issues.length > 0 && selectedIssueIndex >= 0 && (
-            <div className="flex gap-2 text-sm font-normal items-center">
-              <button 
-                onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex - 1 + report.issues.length) % report.issues.length].elementId)}
-                className="px-2 py-1 bg-white border rounded hover:bg-slate-100 text-slate-600"
-              >
-                前へ
-              </button>
-              <span className="text-slate-500 text-xs">{selectedIssueIndex + 1} / {report.issues.length}</span>
-              <button 
-                onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex + 1) % report.issues.length].elementId)}
-                className="px-2 py-1 bg-emerald-600 text-white border border-emerald-700 rounded hover:bg-emerald-700"
-              >
-                次へ
-              </button>
-            </div>
-          )}
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
           {!selectedDetails && (
@@ -319,6 +315,8 @@ export default function WorkspaceLayout() {
               onAdjust={(id, hex) => {
                 setCustomResultsMap(prev => ({ ...prev, [id]: hex }));
               }}
+              onExportJson={handleExportJson}
+              onExportCsv={handleExportCsv}
             />
           )}
 

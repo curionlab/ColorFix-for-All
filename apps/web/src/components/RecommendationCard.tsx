@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ExtractedTextElement, Issue, Recommendation } from '../types';
 import { checkWcagCompliance, checkIsoCompliance, parseHex, simulateCVD } from '@colorfix/color-engine';
-import { ArrowRight, Copy, CheckCircle2, AlertTriangle, Sliders, RefreshCw, Eye } from 'lucide-react';
+import { ArrowRight, Copy, CheckCircle2, AlertTriangle, Sliders, RefreshCw, Eye, Download, FileJson, FileSpreadsheet } from 'lucide-react';
 
 interface RecommendationCardProps {
   element: ExtractedTextElement;
   issue: Issue;
   recommendation: Recommendation;
   onAdjust?: (elementId: string, customFg: string) => void;
+  onExportJson?: () => void;
+  onExportCsv?: () => void;
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -18,7 +20,7 @@ function isValidHex(hex: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(hex);
 }
 
-export default function RecommendationCard({ element, issue, recommendation, onAdjust }: RecommendationCardProps) {
+export default function RecommendationCard({ element, issue, recommendation, onAdjust, onExportJson, onExportCsv }: RecommendationCardProps) {
   const fg = recommendation.originalFg;
   const bg = recommendation.originalBg;
   const fixedFg = recommendation.suggestedFg;
@@ -417,6 +419,31 @@ export default function RecommendationCard({ element, issue, recommendation, onA
             : <><Copy className="w-4 h-4" /> {isModified ? '調整した文字色' : '提案する文字色'} ({customFg}) をコピー</>
           }
         </button>
+
+        {/* --- Export Actions --- */}
+        {(onExportJson || onExportCsv) && (
+          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">レポートを書き出す</span>
+            <div className="grid grid-cols-2 gap-2">
+              {onExportJson && (
+                <button
+                  onClick={onExportJson}
+                  className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
+                >
+                  <FileJson className="w-3.5 h-3.5" /> JSONで保存
+                </button>
+              )}
+              {onExportCsv && (
+                <button
+                  onClick={onExportCsv}
+                  className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors font-medium"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> CSVで保存
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

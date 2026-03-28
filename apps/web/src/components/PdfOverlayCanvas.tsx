@@ -14,6 +14,7 @@ interface PdfOverlayCanvasProps {
   previewSource?: 'original' | 'recommended';
   cvdSimulation?: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia';
   customResultsMap?: Record<string, string>;
+  showOverlays?: boolean;
 }
 
 export default function PdfOverlayCanvas({
@@ -27,7 +28,8 @@ export default function PdfOverlayCanvas({
   onSelectElement,
   previewSource = 'original',
   cvdSimulation = 'none',
-  customResultsMap = {}
+  customResultsMap = {},
+  showOverlays = true
 }: PdfOverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -145,7 +147,7 @@ export default function PdfOverlayCanvas({
           });
         }
 
-        // 2. Apply CVD Simulation if requested (operates on the potentially modified data)
+        // 2. Apply CVD Simulation if requested
         if (cvdSimulation !== 'none') {
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
@@ -174,9 +176,8 @@ export default function PdfOverlayCanvas({
   }, [imageUrl, previewSource, cvdSimulation, originalWidth, originalHeight, recommendations, customResultsMap, elements, issues]);
 
   const finalImageUrl = simulatedImageUrl || imageUrl;
-  // Bounding boxes are only useful in the "original" view for selecting elements
-  // But we show them in "none" CVD simulation mode mainly.
-  const showBoxOverlays = cvdSimulation === 'none';
+  // Use both the global simulation state AND the manual toggle
+  const actualShowOverlays = showOverlays && cvdSimulation === 'none';
 
   return (
     <div className="relative">
@@ -200,21 +201,18 @@ export default function PdfOverlayCanvas({
           </div>
         )}
 
-        {/* Overlay boxes - only show in 'none' simulation mode to keep view clean */}
-        {showBoxOverlays && elements.map((el) => {
+        {/* Overlay boxes */}
+        {actualShowOverlays && elements.map((el) => {
           const isIssue = issues.some(i => i.elementId === el.id);
           const isSelected = selectedElementId === el.id;
           
           let boxClass = "absolute cursor-pointer transition-all border-2 rounded-[1px] ";
           
           if (isSelected) {
-            // Selected box: semi-transparent blue border, NO fill as per user request
             boxClass += "border-blue-500 bg-transparent z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)] ";
           } else if (isIssue) {
-            // Issue box: translucent red border, NO fill
             boxClass += "border-red-400/80 bg-transparent hover:border-red-500 hover:bg-red-500/5 z-10 ";
           } else {
-            // Normal box: hidden unless hovered
             boxClass += "border-transparent hover:border-emerald-400 hover:bg-emerald-400/5 z-0 ";
           }
 
