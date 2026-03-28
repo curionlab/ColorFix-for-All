@@ -13,7 +13,8 @@ export default function WorkspaceLayout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfCanvasUrl, setPdfCanvasUrl] = useState<string | null>(null);
   const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 1000 });
-  const [cvdMode, setCvdMode] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'>('none');
+  const [cvdMode, setCvdMode] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'recommended'>('none');
+  const [customResultsMap, setCustomResultsMap] = useState<Record<string, string>>({}); // elementId -> hex
 
   /** Download all color recommendations as a structured JSON file */
   const handleExportJson = () => {
@@ -27,12 +28,34 @@ export default function WorkspaceLayout() {
       },
       colorMap: report.recommendations.map(rec => {
         const element = report.elements.find(e => `issue-${e.id}` === rec.issueId);
+        const currentFg = (element && customResultsMap[element.id]) || rec.suggestedFg;
+        
+        // Re-calculate metrics for the current (possibly adjusted) color
+        const fg = parseHex(currentFg);
+        const bg = parseHex(rec.originalBg);
+        let liveMetrics = null;
+        if (fg && bg) {
+          const wcag = checkWcagCompliance(fg, bg);
+          const iso = checkIsoCompliance(fg, bg);
+          liveMetrics = {
+            contrastRatio: wcag.ratio.toFixed(2),
+            passesWcagAA: wcag.passesAA,
+            passesIso24505: iso.passesIso24505,
+            deltaL: iso.deltaL.toFixed(1),
+            deltaE_normal: iso.normalDeltaE.toFixed(1),
+            deltaE_PD: iso.deltaE_PD.toFixed(1),
+            deltaE_T: iso.deltaE_T.toFixed(1)
+          };
+        }
+
         return {
           elementId: element?.id ?? rec.issueId,
           text: element?.text?.trim().substring(0, 60) ?? '',
           backgroundColor: rec.originalBg,
           originalForegroundColor: rec.originalFg,
-          recommendedForegroundColor: rec.suggestedFg,
+          finalForegroundColor: currentFg,
+          isManuallyAdjusted: !!(element && customResultsMap[element.id]),
+          metrics: liveMetrics,
           reason: rec.reason,
         };
       }),
@@ -52,8 +75,9 @@ export default function WorkspaceLayout() {
     const header = 'elementId,text,backgroundColor,originalForegroundColor,recommendedForegroundColor\n';
     const rows = report.recommendations.map(rec => {
       const element = report.elements.find(e => `issue-${e.id}` === rec.issueId);
+      const currentFg = (element && customResultsMap[element.id]) || rec.suggestedFg;
       const text = (element?.text?.trim() ?? '').replace(/"/g, '""');
-      return `"${element?.id ?? ''}","${text}","${rec.originalBg}","${rec.originalFg}","${rec.suggestedFg}"`;
+      return `"${element?.id ?? ''}","${text}","${rec.originalBg}","${rec.originalFg}","${currentFg}"`;
     });
     const blob = new Blob([header + rows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -129,6 +153,7 @@ export default function WorkspaceLayout() {
           issues,
           recommendations
         });
+        setCustomResultsMap({}); // Reset map for new file
         
         if (issues.length > 0) {
           setSelectedElementId(issues[0].elementId);
@@ -205,9 +230,11 @@ export default function WorkspaceLayout() {
               originalHeight={pdfDimensions.height}
               elements={report.elements}
               issues={report.issues}
+              recommendations={report.recommendations}
               selectedElementId={selectedElementId}
               onSelectElement={setSelectedElementId}
               cvdType={cvdMode}
+              customResultsMap={customResultsMap}
             />
           )}
         </div>
@@ -242,6 +269,14 @@ export default function WorkspaceLayout() {
             >
               T型
             </button>
+            <div className="w-[1px] h-3 bg-slate-300 mx-0.5" />
+            <button 
+              onClick={() => setCvdMode('recommended')}
+              className={`px-2 py-1 rounded-md transition-all ${cvdMode === 'recommended' ? 'bg-emerald-500 text-white font-bold shadow-sm' : 'text-emerald-600 hover:bg-emerald-50'}`}
+              title="修正後の色でプレビュー"
+            >
+              修正後
+            </button>
           </div>
           {report.issues.length > 0 && selectedIssueIndex >= 0 && (
             <div className="flex gap-2 text-sm font-normal items-center">
@@ -271,6 +306,9 @@ export default function WorkspaceLayout() {
               element={selectedDetails}
               issue={selectedIssue}
               recommendation={selectedRec}
+              onAdjust={(id, hex) => {
+                setCustomResultsMap(prev => ({ ...prev, [id]: hex }));
+              }}
             />
           )}
 

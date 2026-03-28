@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ExtractedTextElement, Issue, Recommendation } from '../types';
-import { checkWcagCompliance, checkIsoCompliance, parseHex } from '@colorfix/color-engine';
-import { ArrowRight, Copy, CheckCircle2, AlertTriangle, Sliders, RefreshCw } from 'lucide-react';
+import { checkWcagCompliance, checkIsoCompliance, parseHex, simulateCVD } from '@colorfix/color-engine';
+import { ArrowRight, Copy, CheckCircle2, AlertTriangle, Sliders, RefreshCw, Eye } from 'lucide-react';
 
 interface RecommendationCardProps {
   element: ExtractedTextElement;
   issue: Issue;
   recommendation: Recommendation;
+  onAdjust?: (elementId: string, customFg: string) => void;
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -17,7 +18,7 @@ function isValidHex(hex: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(hex);
 }
 
-export default function RecommendationCard({ element, issue, recommendation }: RecommendationCardProps) {
+export default function RecommendationCard({ element, issue, recommendation, onAdjust }: RecommendationCardProps) {
   const fg = recommendation.originalFg;
   const bg = recommendation.originalBg;
   const fixedFg = recommendation.suggestedFg;
@@ -28,6 +29,23 @@ export default function RecommendationCard({ element, issue, recommendation }: R
   const [liveWcag, setLiveWcag] = useState<ReturnType<typeof checkWcagCompliance> | null>(null);
   const [liveIso, setLiveIso] = useState<ReturnType<typeof checkIsoCompliance> | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showSimulation, setShowSimulation] = useState(false);
+
+  // --- CVD Simulation (computed from customFg and bg) ---
+  const cvdSimulations = useMemo(() => {
+    const parsedBg = parseHex(bg);
+    const parsedFg = parseHex(customFg);
+    if (!parsedBg || !parsedFg) return null;
+    const toHex = (c: { r: number; g: number; b: number }) =>
+      '#' + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, '0')).join('');
+    const sims = [
+      { label: '正常視', key: 'normal', fg: customFg, bg },
+      { label: 'P型（プロタノピア）', key: 'prot', fg: toHex(simulateCVD(parsedFg, 'protanopia')), bg: toHex(simulateCVD(parsedBg, 'protanopia')) },
+      { label: 'D型（デュータノピア）', key: 'deut', fg: toHex(simulateCVD(parsedFg, 'deuteranopia')), bg: toHex(simulateCVD(parsedBg, 'deuteranopia')) },
+      { label: 'T型（トリタノピア）', key: 'trit', fg: toHex(simulateCVD(parsedFg, 'tritanopia')), bg: toHex(simulateCVD(parsedBg, 'tritanopia')) },
+    ];
+    return sims;
+  }, [customFg, bg]);
 
   // Recompute live metrics whenever the custom color changes
   const recomputeMetrics = useCallback((hex: string) => {
@@ -51,6 +69,7 @@ export default function RecommendationCard({ element, issue, recommendation }: R
     setCustomFg(hex);
     setHexInput(hex);
     recomputeMetrics(hex);
+    onAdjust?.(element.id, hex);
   };
 
   // Handle hex text input changes (validate before applying)
@@ -61,6 +80,7 @@ export default function RecommendationCard({ element, issue, recommendation }: R
     if (isValidHex(normalized)) {
       setCustomFg(normalized);
       recomputeMetrics(normalized);
+      onAdjust?.(element.id, normalized);
     }
   };
 
@@ -69,6 +89,7 @@ export default function RecommendationCard({ element, issue, recommendation }: R
     setCustomFg(fixedFg);
     setHexInput(fixedFg);
     recomputeMetrics(fixedFg);
+    onAdjust?.(element.id, fixedFg);
   };
 
   const handleCopy = () => {
@@ -235,6 +256,50 @@ export default function RecommendationCard({ element, issue, recommendation }: R
               </div>
             )}
           </div>
+        </div>
+
+        {/* ─── CVD Simulation Preview ─── */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+          <button
+            onClick={() => setShowSimulation(!showSimulation)}
+            className="w-full px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between hover:bg-slate-200 transition-colors"
+          >
+            <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5" /> 見え方のシミュレーション
+            </span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              {showSimulation ? '閉じる' : '表示する'}
+            </span>
+          </button>
+
+          {showSimulation && cvdSimulations && (
+            <div className="p-3 grid grid-cols-2 gap-2 bg-white">
+              {cvdSimulations.map((sim) => (
+                <div key={sim.key} className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-slate-500 truncate">{sim.label}</span>
+                  <div
+                    className="h-10 rounded border shadow-sm flex items-center justify-center p-1 overflow-hidden"
+                    style={{ backgroundColor: sim.bg }}
+                  >
+                    <span 
+                      style={{ color: sim.fg }} 
+                      className="font-bold text-sm leading-none drop-shadow-sm truncate"
+                    >
+                      {element.text.trim().substring(0, 4) || 'あAa'}
+                    </span>
+                  </div>
+                  {sim.key !== 'normal' && (
+                    <div className="flex justify-between text-[8px] text-slate-400 font-mono">
+                      <span>{sim.fg}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="col-span-2 mt-1 pt-2 border-t border-slate-100 italic text-[9px] text-slate-400 leading-tight">
+                ※ Brettel/Viénotアルゴリズムに基づく推定値です。実際の見え方は個人差があります。
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Details section */}
