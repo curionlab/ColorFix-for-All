@@ -1,9 +1,10 @@
 ---
 interface Props {
 	title: string;
+  hideFooter?: boolean;
 }
 
-const { title } = Astro.props;
+const { title, hideFooter = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -17,7 +18,7 @@ const { title } = Astro.props;
 		<title>{title}</title>
 	</head>
 	<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
-    <header class="border-b bg-white">
+    <header class="border-b bg-white flex-shrink-0">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <a href="/" class="font-bold text-xl tracking-tight text-emerald-700">ColorFix<span class="text-slate-800"> for All</span></a>
         <nav class="flex gap-4 items-center">
@@ -27,14 +28,16 @@ const { title } = Astro.props;
       </div>
     </header>
 		
-    <main class="flex-grow">
+    <main class="flex-grow flex flex-col overflow-hidden">
       <slot />
     </main>
 
-    <footer class="bg-slate-100 border-t py-8 mt-12">
-      <div class="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-        &copy; {new Date().getFullYear()} ColorFix for All. Open source project.
-      </div>
-    </footer>
+    {!hideFooter && (
+      <footer class="bg-slate-100 border-t py-8 mt-12 flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+          &copy; {new Date().getFullYear()} ColorFix for All. Open source project.
+        </div>
+      </footer>
+    )}
 	</body>
 </html>
