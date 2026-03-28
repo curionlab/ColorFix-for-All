@@ -5,7 +5,7 @@ import FileDropzone from './FileDropzone';
 import PdfOverlayCanvas from './PdfOverlayCanvas';
 import RecommendationCard from './RecommendationCard';
 import { extractPdf } from '../lib/pdf-extractor';
-import { Download, ListFilter, FileOutput, FileJson, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
+import { Download, ListFilter, FileOutput, FileJson, FileSpreadsheet, CheckCircle2, Info } from 'lucide-react';
 
 export default function WorkspaceLayout() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
@@ -17,7 +17,7 @@ export default function WorkspaceLayout() {
   const [cvdSimulation, setCvdSimulation] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'>('none');
   const [showOverlays, setShowOverlays] = useState(true);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'fixes' | 'export'>('fixes');
-  const [customResultsMap, setCustomResultsMap] = useState<Record<string, string>>({}); // elementId -> hex
+  const [customResultsMap, setCustomResultsMap] = useState<Record<string, { fg: string, bg: string }>>({}); // elementId -> {fg, bg}
 
   /** Download all color recommendations as a structured JSON file */
   const handleExportJson = () => {
@@ -31,11 +31,12 @@ export default function WorkspaceLayout() {
       },
       colorMap: report.recommendations.map(rec => {
         const element = report.elements.find(e => `issue-${e.id}` === rec.issueId);
-        const currentFg = (element && customResultsMap[element.id]) || rec.suggestedFg;
+        const currentFg = (element && customResultsMap[element.id]?.fg) || rec.suggestedFg;
+        const currentBg = (element && customResultsMap[element.id]?.bg) || rec.suggestedBg;
         
         // Re-calculate metrics for the current (possibly adjusted) color
         const fg = parseHex(currentFg);
-        const bg = parseHex(rec.originalBg);
+        const bg = parseHex(currentBg);
         let liveMetrics = null;
         if (fg && bg) {
           const wcag = checkWcagCompliance(fg, bg);
@@ -53,8 +54,9 @@ export default function WorkspaceLayout() {
         return {
           elementId: element?.id ?? rec.issueId,
           text: element?.text?.trim().substring(0, 60) ?? '',
-          backgroundColor: rec.originalBg,
+          originalBackgroundColor: rec.originalBg,
           originalForegroundColor: rec.originalFg,
+          finalBackgroundColor: currentBg,
           finalForegroundColor: currentFg,
           isManuallyAdjusted: !!(element && customResultsMap[element.id]),
           metrics: liveMetrics,
@@ -74,12 +76,13 @@ export default function WorkspaceLayout() {
   /** Download color recommendations as a CSV for design tools */
   const handleExportCsv = () => {
     if (!report) return;
-    const header = 'elementId,text,backgroundColor,originalForegroundColor,recommendedForegroundColor\n';
+    const header = 'elementId,text,originalBg,originalFg,finalBg,finalFg\n';
     const rows = report.recommendations.map(rec => {
       const element = report.elements.find(e => `issue-${e.id}` === rec.issueId);
-      const currentFg = (element && customResultsMap[element.id]) || rec.suggestedFg;
+      const currentFg = (element && customResultsMap[element.id]?.fg) || rec.suggestedFg;
+      const currentBg = (element && customResultsMap[element.id]?.bg) || rec.suggestedBg;
       const text = (element?.text?.trim() ?? '').replace(/"/g, '""');
-      return `"${element?.id ?? ''}","${text}","${rec.originalBg}","${rec.originalFg}","${currentFg}"`;
+      return `"${element?.id ?? ''}","${text}","${rec.originalBg}","${rec.originalFg}","${currentBg}","${currentFg}"`;
     });
     const blob = new Blob([header + rows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -125,22 +128,25 @@ export default function WorkspaceLayout() {
               }
             });
 
-            const fixedFg = findAccessibleColor(fg, bg);
-            if (fixedFg) {
+            const solution = findAccessibleColor(fg, bg, { mode: 'both', targetWcagRatio: 4.5 });
+            if (solution) {
               const toHexStr = (c: any) => `#${c.r.toString(16).padStart(2,'0')}${c.g.toString(16).padStart(2,'0')}${c.b.toString(16).padStart(2,'0')}`;
               
-              let detailedReason = '色相（色味）を維持したまま、明暗差（コントラスト）を調整して基準をクリアしました。';
-              if (iso.isProblematicPairing) {
-                detailedReason = '（赤と緑など）色覚特性のある方の視界では似通って見えてしまう配色です。色相に依存しなくても区別できる十分なコントラスト（知覚色差 ΔE₀₀）を確保するよう調整しました。';
-              } else if (!wcag.passesAA) {
-                detailedReason = 'WCAG AA基準（コントラスト比 4.5 以上）を満たすよう、色相を変えずに文字の明度を調整して視認性を高めました。';
+              const fgHex = toHexStr(solution.fg);
+              const bgHex = toHexStr(solution.bg);
+              const wasBgChanged = bgHex.toLowerCase() !== el.backgroundColor.toLowerCase();
+
+              let detailedReason = 'OKLCH色空間上で色相を維持しつつ、通常視と色覚特性（CVD）シミュレーションの両方で十分なコントラスト比を確保しました。';
+              if (wasBgChanged) {
+                detailedReason = 'アクセシビリティ基準を満たすため、色相を保ちつつ文字色と背景色の両方を調整し、デザインの印象を損なわない範囲で視認性を最適化しました。';
               }
 
               recommendations.push({
                 issueId,
                 originalFg: el.foregroundColor,
                 originalBg: el.backgroundColor,
-                suggestedFg: toHexStr(fixedFg),
+                suggestedFg: fgHex,
+                suggestedBg: bgHex,
                 reason: detailedReason
               });
             }
@@ -330,8 +336,8 @@ export default function WorkspaceLayout() {
                   element={selectedDetails}
                   issue={selectedIssue}
                   recommendation={selectedRec}
-                  onAdjust={(id, hex) => {
-                    setCustomResultsMap(prev => ({ ...prev, [id]: hex }));
+                  onAdjust={(id, fgHex, bgHex) => {
+                    setCustomResultsMap(prev => ({ ...prev, [id]: { fg: fgHex, bg: bgHex } }));
                   }}
                 />
               )}
@@ -343,13 +349,47 @@ export default function WorkspaceLayout() {
                 const wcag = checkWcagCompliance(fg, bg);
                 const iso = checkIsoCompliance(fg, bg);
                 return (
-                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-800 text-sm flex flex-col gap-2">
-                    <span className="font-bold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> 基準クリア</span>
-                    <p>このテキストは充分なコントラスト比があり、ISO基準も満たしています。</p>
-                    <div className="text-[11px] bg-white/60 p-2 rounded border border-green-100 flex flex-col gap-1 mt-2 text-green-900">
-                      <div className="flex justify-between">
-                        <span>WCAGコントラスト比 (目標 4.50):</span>
-                        <span className="font-bold">{wcag.ratio.toFixed(2)} : 1</span>
+                  <div className="flex flex-col gap-4">
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-800 text-sm flex flex-col gap-2 shadow-sm">
+                      <span className="font-bold flex items-center gap-1.5 text-emerald-700">
+                        <CheckCircle2 className="w-4 h-4" /> 基準クリア
+                      </span>
+                      <p className="text-xs leading-relaxed opacity-90">
+                        このテキストはWCAG AA基準および色覚多様性（CVD）指標のすべてを満たしています。
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                      <div className="px-3 py-2 bg-slate-50 border-b flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                        <Info className="w-3.5 h-3.5" /> 判定結果の詳細
+                      </div>
+                      <div className="p-3 flex flex-col gap-3 font-mono text-[11px]">
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                          <span className="text-slate-500">文字色 (FG)</span>
+                          <span className="font-bold">{selectedDetails.foregroundColor}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                          <span className="text-slate-500">背景色 (BG)</span>
+                          <span className="font-bold">{selectedDetails.backgroundColor}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-slate-500 uppercase">WCAG Ratio</span>
+                          <span className="font-bold text-emerald-600 text-xs">
+                            {wcag.ratio.toFixed(2)} : 1 ✓
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 uppercase">P/D型 (赤緑) ΔE₀₀</span>
+                          <span className="font-bold text-emerald-600">
+                            {iso.deltaE_PD.toFixed(1)} ✓
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 uppercase">T型 (青黄) ΔE₀₀</span>
+                          <span className="font-bold text-emerald-600">
+                            {iso.deltaE_T.toFixed(1)} ✓
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -223,7 +223,7 @@
       <div class="hero-badge">&#x1F52C; ISO 24505-2:2025 の考え方を参照</div>
       <h1>色をなおす、<br><span class="em">デザインを守る。</span></h1>
       <p class="hero-desc">
-        PDFをブラウザにドロップするだけ。色覚特性のある方が識別しやすい<strong>改善候補色</strong>を、元デザインの色相をできるだけ保ちながら提案します。
+        PDFをブラウザにドロップするだけ。色覚特性（CVD）に配慮した<strong>アクセシブルな配色</strong>を、元デザインの色相を完全に保ちながら数理的に提案します。
       </p>
       <div class="hero-actions">
         <a href="/app" class="btn btn-primary">PDFで試す &rarr;</a>
@@ -329,7 +329,7 @@
         <tr>
           <td class="feature-name">具体的な改善候補色の提案</td>
           <td><span class="cross">&#10007;</span></td>
-          <td><span class="check">&#10004; WCAGコントラスト確保＋ΔE00で識別性を評価</span></td>
+          <td><span class="check">&#10004; OKLCH最適化＋WCAG/CVD合否判定</span></td>
         </tr>
         <tr>
           <td class="feature-name">元の色相を保つ補正</td>
@@ -339,7 +339,7 @@
         <tr>
           <td class="feature-name">CVDシミュレーション＋知覚色差（ΔE00）による評価</td>
           <td><span class="partial">&#9651; ツール依存</span></td>
-          <td><span class="check">&#10004;</span></td>
+          <td><span class="check">&#10004; OKLCH制約付き最適化</span></td>
         </tr>
       </tbody>
       <tfoot>
@@ -396,8 +396,8 @@
       </div>
       <div class="feature-card">
         <span class="icon">&#x1F3AF;</span>
-        <h3>差分最小の改善提案（ΔE00）</h3>
-        <p>CIELAB色空間で元の色との知覚的距離（ΔE00）を最小化する2Dグリッドサーチで探索します。色相を固定して明度・彩度だけを動かすため、元の色の印象を保ちやすくなっています。</p>
+        <h3>差分最小の最適化（OKLCH + ΔE00）</h3>
+        <p>最新の知覚均一空間 <strong>OKLCH</strong> で探索。色相を完全に固定したまま、通常視とCVDシミュレーションの制約下で知覚色差（ΔE00）を最小化する制約付き最適化を実施します。</p>
       </div>
       <div class="feature-card">
         <span class="icon">&#x1F465;</span>
@@ -425,18 +425,14 @@
         <p>色覚特性・ロービジョン向けの配色法を定める国際規格。産総研が制定に参画しており、公開プレスリリースを参考に設計しています。規格本文の完全な再現ではありません。</p>
       </div>
       <div class="standard-item">
-        <h4>WCAG 2.2</h4>
-        <p>Webアクセシビリティの国際標準。PDFのテキストコンポーネントにおけるコントラスト比の検証基準として採用しています。</p>
+        <h4>知覚均一空間 OKLCH</h4>
+        <p>CIELABの欠点（青色の色相ずれ等）を克服した最新の色空間。アクセシビリティ対応のための明度変更を行っても、ブランドの「色味」を正確に維持できます。</p>
       </div>
       <div class="standard-item">
-        <h4>CVDシミュレーション（Brettel/Viénot 1997/1999）</h4>
-        <p>色覚特性をもつ方の見え方を数値的に再現する手法。P型・D型・T型の3タイプを線形RGB空間で変換します。</p>
+        <h4>制約付き最適化 (Constrained Optimization)</h4>
+        <p>単純なグリッド探索ではなく、WCAG/CVDコントラスト制約を満たしつつΔE00を最小化する多段階探索を採用。文字色と背景色の同時最適化もサポートします。</p>
       </div>
-      <div class="standard-item">
-        <h4>CIEDE2000（ΔE00）</h4>
-        <p>人の知覚に近い色差を計算するCIE標準指標。色の「見かけの差」を均一な尺度で測り、改善候補色の選定に使用します。</p>
-      </div>
-      <p class="standard-note">※ このサービスはISO 24505-2 の規格準拠を保証するものではありません。ISO 24505-2 は色のカテゴリー性と基本色領域（マンセル表色系）に基づく規格です。本サービスはその目的（色覚特性のある方が識別しやすい配色）を共有しつつ、CVDシミュレーション＋ΔE00（知覚色差）という異なる手法で近似的に実装しています。ΔE00の判定閾値など具体的な数値は、規格本文ではなく本サービスの設計判断に基づいています。</p>
+      <p class="standard-note">※ このサービスはISO 24505-2 の規格準拠を保証するものではありません。本サービスは最新の色彩工学（OKLCH / CIEDE2000）とCVDシミュレーションを組み合わせ、アクセシビリティとデザイン保持の両立を目指した独自実装です。判定閾値などは本サービスの設計判断に基づいています。</p>
     </div>
   </div>
 </div>

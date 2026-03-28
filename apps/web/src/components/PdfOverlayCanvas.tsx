@@ -13,7 +13,7 @@ interface PdfOverlayCanvasProps {
   onSelectElement: (id: string) => void;
   previewSource?: 'original' | 'recommended';
   cvdSimulation?: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia';
-  customResultsMap?: Record<string, string>;
+  customResultsMap?: Record<string, { fg: string, bg: string }>;
   showOverlays?: boolean;
 }
 
@@ -96,14 +96,16 @@ export default function PdfOverlayCanvas({
             const recommendation = recommendations.find(r => r.issueId === `issue-${el.id}`);
             if (!recommendation) return;
 
-            const customFgHex = customResultsMap[el.id];
-            const targetFgHex = customFgHex || recommendation.suggestedFg;
+            const customPair = customResultsMap[el.id];
+            const targetFgHex = customPair?.fg || recommendation.suggestedFg;
+            const targetBgHex = customPair?.bg || recommendation.suggestedBg;
             
             const targetFg = parseHex(targetFgHex);
+            const targetBg = parseHex(targetBgHex);
             const originalFg = parseHex(recommendation.originalFg);
             const originalBg = parseHex(recommendation.originalBg);
             
-            if (!targetFg || !originalFg || !originalBg) return;
+            if (!targetFg || !targetBg || !originalFg || !originalBg) return;
 
             const vR = originalFg.r - originalBg.r;
             const vG = originalFg.g - originalBg.g;
@@ -129,18 +131,23 @@ export default function PdfOverlayCanvas({
                 const dFgSq = (r - originalFg.r)**2 + (g - originalFg.g)**2 + (b - originalFg.b)**2;
                 const dBgSq = (r - originalBg.r)**2 + (g - originalBg.g)**2 + (b - originalBg.b)**2;
 
-                if (dFgSq < dBgSq || dFgSq < 4000) { 
+                // Process pixels that are reasonably close to either the foreground or background color
+                if (dFgSq < 4000 || dBgSq < 4000 || dFgSq < dBgSq) { 
+                  // Interpolation factor t (0 = background, 1 = foreground)
                   const pR = r - originalBg.r;
                   const pG = g - originalBg.g;
                   const pB = b - originalBg.b;
                   let t = (pR*vR + pG*vG + pB*vB) / vLenSq;
-                  if (t < 0) t = 0;
-                  if (t > 1) t = 1;
+                  t = Math.max(0, Math.min(1, t));
+                  
+                  // If much closer to FG, snap to 1.0; if much closer to BG, snap to 0
                   if (dFgSq < 800) t = 1.0;
+                  if (dBgSq < 800) t = 0.0;
 
-                  data[i] = Math.round(t * targetFg.r + (1 - t) * originalBg.r);
-                  data[i+1] = Math.round(t * targetFg.g + (1 - t) * originalBg.g);
-                  data[i+2] = Math.round(t * targetFg.b + (1 - t) * originalBg.b);
+                  // Move current pixel to the new color range (targetBg to targetFg)
+                  data[i] = Math.round(t * targetFg.r + (1 - t) * targetBg.r);
+                  data[i+1] = Math.round(t * targetFg.g + (1 - t) * targetBg.g);
+                  data[i+2] = Math.round(t * targetFg.b + (1 - t) * targetBg.b);
                 }
               }
             }

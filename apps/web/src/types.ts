@@ -32,6 +32,7 @@ export interface Recommendation {
   originalFg: string;
   originalBg: string;
   suggestedFg: string;
+  suggestedBg: string;
   reason: string;
 }
 

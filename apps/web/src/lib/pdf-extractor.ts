@@ -1,7 +1,7 @@
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import type { TextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
 import type { ExtractedTextElement } from '../types';
-import { toHex } from '@colorfix/color-engine';
+import { toHex, parseHex } from '@colorfix/color-engine';
 
 // Use local worker or CDN. For simplicity, we can load from CDN in production
 GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs`;
@@ -19,9 +19,10 @@ function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: 
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
-        const qR = r & 0xE0;
-        const qG = g & 0xE0;
-        const qB = b & 0xE0;
+        
+        const qR = r & 0xF0;
+        const qG = g & 0xF0;
+        const qB = b & 0xF0;
         const key = `${qR},${qG},${qB}`;
         
         if (!colorTotals.has(key)) {
@@ -34,7 +35,6 @@ function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: 
         total.g += g;
         total.b += b;
         
-        // Count pixels on the perimeter to reliably identify background
         if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
           colorBorders.set(key, (colorBorders.get(key) || 0) + 1);
         }
@@ -42,13 +42,10 @@ function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: 
     }
   }
 
-  // Determine Background: The color with the most border pixels.
   let bgKey = '';
   let maxBorder = -1;
   colorBorders.forEach((bCount, key) => {
-    const totalCount = colorTotals.get(key)!.count;
-    // Tie-breaker: total count of pixels
-    if (bCount > maxBorder || (bCount === maxBorder && totalCount > (colorTotals.get(bgKey)?.count || 0))) {
+    if (bCount > maxBorder) {
       maxBorder = bCount;
       bgKey = key;
     }
@@ -62,35 +59,32 @@ function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: 
     bgB = Math.round(bgCluster.b / bgCluster.count);
   }
 
-  // Determine Foreground:
-  // Pick the significant cluster with the absolute largest difference from the background,
-  // effectively ignoring the frequent gray anti-aliased edge pixels.
-  const totalPixels = width * height;
-  const minFreq = Math.max(1, totalPixels * 0.005); // Reduced threshold to 0.5% for thin text
-  
   let bestFg = { r: bgR, g: bgG, b: bgB };
-  let maxDiff = -1;
+  let maxScore = -1;
 
   colorTotals.forEach((cluster, key) => {
-    if (key !== bgKey && cluster.count >= minFreq) {
-      const cr = Math.round(cluster.r / cluster.count);
-      const cg = Math.round(cluster.g / cluster.count);
-      const cb = Math.round(cluster.b / cluster.count);
-      const diff = Math.abs(cr - bgR) + Math.abs(cg - bgG) + Math.abs(cb - bgB);
-      if (diff > maxDiff) {
-        maxDiff = diff;
-        bestFg = { r: cr, g: cg, b: cb };
-      }
+    if (key === bgKey) return;
+    const cr = Math.round(cluster.r / cluster.count);
+    const cg = Math.round(cluster.g / cluster.count);
+    const cb = Math.round(cluster.b / cluster.count);
+    const diff = Math.abs(cr - bgR) + Math.abs(cg - bgG) + Math.abs(cb - bgB);
+    
+    if (diff < 60) return;
+    const score = cluster.count * Math.min(1.0, diff / 200); 
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestFg = { r: cr, g: cg, b: cb };
     }
   });
 
-  // Fallback if no robust cluster found (e.g. extremely thin 1px text)
-  if (maxDiff === -1) {
+  if (maxScore === -1) {
+    let maxDiffFallback = -1;
     for (let i = 0; i < data.length; i += 4) {
       if (data[i + 3] > 128) {
-        const diff = Math.abs(data[i] - bgR) + Math.abs(data[i + 1] - bgG) + Math.abs(data[i + 2] - bgB);
-        if (diff > maxDiff) {
-          maxDiff = diff;
+        const d = Math.abs(data[i] - bgR) + Math.abs(data[i + 1] - bgG) + Math.abs(data[i + 2] - bgB);
+        if (d > maxDiffFallback) {
+          maxDiffFallback = d;
           bestFg = { r: data[i], g: data[i + 1], b: data[i + 2] };
         }
       }
@@ -111,7 +105,6 @@ export async function extractPdf(file: File): Promise<{
 }> {
   const arrayBuffer = await file.arrayBuffer();
   
-  // Load PDF with CMap configuration for CJK languages (like Japanese)
   const loadingTask = getDocument({ 
     data: arrayBuffer,
     cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
@@ -119,55 +112,36 @@ export async function extractPdf(file: File): Promise<{
     standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/standard_fonts/'
   });
   const pdf = await loadingTask.promise;
-  
-  // For MVP, just process Page 1
   const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 2.0 }); // Increased scale for better pixel sampling
+  const viewport = page.getViewport({ scale: 2.0 });
 
-  // Create canvas for rendering
   const canvas = document.createElement('canvas');
-  // willReadFrequently is important for getImageData performance
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   canvas.width = viewport.width;
   canvas.height = viewport.height;
 
-  // Fill with white first, as PDFs assume a white background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Render exactly what a user sees to the canvas
   await page.render({ canvasContext: ctx, viewport }).promise;
 
-  // Get text content
   const textContent = await page.getTextContent();
   const elements: ExtractedTextElement[] = [];
 
   for (let i = 0; i < textContent.items.length; i++) {
-    const item = textContent.items[i];
-    if ('str' in item && item.str.trim() !== '') {
-      // Ignore decorative text elements (like "......" or "----") which cause false flags
-      if (item.str.replace(/[\s.,\-_・]/g, '') === '') {
-        continue;
-      }
+    const item = textContent.items[i] as TextItem;
+    if (item.str && item.str.trim() !== '') {
+      if (item.str.replace(/[\s.,\-_・]/g, '') === '') continue;
 
-      // Calculate bounding box using transform matrix
       const tx = viewport.transform;
-      // item.transform is [fontHeight, 0, 0, fontHeight, x, y] roughly
-      // PDF y-axis is bottom-up, viewport.transform flips it.
       const x = (item.transform[4] * tx[0]) + (item.transform[5] * tx[2]) + tx[4];
       const y = (item.transform[4] * tx[1]) + (item.transform[5] * tx[3]) + tx[5];
-      
       const w = item.width * viewport.scale;
-      // item.height doesn't directly exist on TextItem type in older pdfjs but usually the font size is item.transform[0]
       const h = item.transform[0] * viewport.scale; 
-      
-      // Adjust Y because it represents baseline, moving it up to roughly top of text
       const adjustedY = y - h;
 
       let bgColor = '#ffffff';
       let fgColor = '#000000';
       try {
-        // Expand the bounding box slightly to capture the background perimeter reliably
         const sx = Math.max(0, Math.floor(x - 2));
         const sy = Math.max(0, Math.floor(adjustedY - 2));
         const sw = Math.min(canvas.width - sx, Math.ceil(w + 4));

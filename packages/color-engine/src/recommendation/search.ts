@@ -1,111 +1,113 @@
 import { RgbColor } from '../color/parse';
-import { rgbToHsl, hslToRgb, rgbToLab } from '../color/convert';
+import { rgbToOklch, oklchToRgb, rgbToLab } from '../color/convert';
 import { ciede2000 } from '../color/distance';
-import { checkWcagCompliance } from '../analysis/wcag';
-import { checkIsoCompliance } from '../analysis/iso';
+import { checkCvdContrast } from '../analysis/cvd';
+
+export type SearchMode = 'fg-only' | 'bg-only' | 'both';
 
 export interface SearchOptions {
   targetWcagRatio?: number; // Default 4.5
-  enforceIso?: boolean; // Default true
-  maxAttempts?: number; // Default 100
+  mode?: SearchMode; // Default 'fg-only'
+  bgWeight?: number; // Lambda for BG distance weight (default 1.0)
+}
+
+interface SearchCandidate {
+  fg: RgbColor;
+  bg: RgbColor;
+  distance: number;
 }
 
 /**
- * Searches for the closest accessible color by adjusting lightness/saturation,
- * preserving hue as much as possible to maintain brand identity.
- * Uses CIEDE2000 to measure perceptual distance from the original color.
+ * Searches for the closest accessible color pairing using OKLCH and CIEDE2000 ΔE00.
+ * Supports optimizing FG, BG, or both simultaneously.
  */
 export function findAccessibleColor(
-  fg: RgbColor,
-  bg: RgbColor,
+  fgOrig: RgbColor,
+  bgOrig: RgbColor,
   options: SearchOptions = {}
-): RgbColor | null {
+): { fg: RgbColor; bg: RgbColor } | null {
   const targetRatio = options.targetWcagRatio ?? 4.5;
-  const enforceIso = options.enforceIso ?? true;
+  const mode = options.mode ?? 'fg-only';
+  const bgWeight = options.bgWeight ?? 1.0;
 
-  const currentHsl = rgbToHsl(fg);
-  const currentLab = rgbToLab(fg);
+  const fgLab = rgbToLab(fgOrig);
+  const bgLab = rgbToLab(bgOrig);
+  const fgOklch = rgbToOklch(fgOrig);
+  const bgOklch = rgbToOklch(bgOrig);
 
-  // Check if it already passes
-  const initialWcag = checkWcagCompliance(fg, bg);
-  const initialIso = checkIsoCompliance(fg, bg);
+  /** Calculate weighted distance total delta-E00 */
+  const calculateScore = (testFgRgb: RgbColor, testBgRgb: RgbColor): number => {
+    const testFgLab = rgbToLab(testFgRgb);
+    const testBgLab = rgbToLab(testBgRgb);
+    const dE_FG = ciede2000(fgLab, testFgLab);
+    const dE_BG = ciede2000(bgLab, testBgLab);
+    return dE_FG + bgWeight * dE_BG;
+  };
 
-  if (initialWcag.ratio >= targetRatio && (!enforceIso || initialIso.passesIso24505)) {
-    return fg;
+  /** Check if a pair passes all CVD and normal contrast requirements */
+  const checkPass = (fg: RgbColor, bg: RgbColor): boolean => {
+    return checkCvdContrast(fg, bg, targetRatio).passesAll;
+  };
+
+  // Check initial state
+  if (checkPass(fgOrig, bgOrig)) {
+    return { fg: fgOrig, bg: bgOrig };
   }
 
-  let bestPass: RgbColor | null = null;
-  let minDeltaE = Infinity;
+  let best: SearchCandidate | null = null;
+  let minDistance = Infinity;
 
-  // 1. Coarse search (stride 10)
-  // Scans both L and S to find the perceptual best match, avoiding the "fall to black" trap
-  for (let l = 0; l <= 100; l += 10) {
-    for (let s = 0; s <= 100; s += 10) {
-      const testHsl = { ...currentHsl, l: l / 100, s: s / 100 };
-      const testRgb = hslToRgb(testHsl);
+  // Grid steps (OKLCH - L: 0..1, C: 0..0.4)
+  const coarseL = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+  const coarseC = [0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4];
 
-      const wcag = checkWcagCompliance(testRgb, bg);
-      const iso = checkIsoCompliance(testRgb, bg);
+  /** Coarse Grid Search */
+  const fgCandidates = mode === 'bg-only' ? [fgOrig] : coarseL.flatMap(l => coarseC.map(c => oklchToRgb({ l, c, h: fgOklch.h })));
+  const bgCandidates = mode === 'fg-only' ? [bgOrig] : coarseL.flatMap(l => coarseC.map(c => oklchToRgb({ l, c, h: bgOklch.h })));
 
-      if (wcag.ratio >= targetRatio && (!enforceIso || iso.passesIso24505)) {
-        const testLab = rgbToLab(testRgb);
-        const deltaE = ciede2000(currentLab, testLab);
-        if (deltaE < minDeltaE) {
-          minDeltaE = deltaE;
-          bestPass = testRgb;
+  for (const f of fgCandidates) {
+    for (const b of bgCandidates) {
+      if (checkPass(f, b)) {
+        const d = calculateScore(f, b);
+        if (d < minDistance) {
+          minDistance = d;
+          best = { fg: f, bg: b, distance: d };
         }
       }
     }
   }
 
-  // 2. Fine search: refine around best coarse candidate (±9 steps)
-  if (bestPass) {
-    const bestCoarseHsl = rgbToHsl(bestPass);
-    const coarseL = Math.round(bestCoarseHsl.l * 100);
-    const coarseS = Math.round(bestCoarseHsl.s * 100);
+  /** Refinement Search around best coarse candidate (Fine Grid) */
+  if (best) {
+    const bestFgLch = rgbToOklch(best.fg);
+    const bestBgLch = rgbToOklch(best.bg);
 
-    const minL = Math.max(0, coarseL - 9);
-    const maxL = Math.min(100, coarseL + 9);
-    const minS = Math.max(0, coarseS - 9);
-    const maxS = Math.min(100, coarseS + 9);
+    const refineL = [-0.05, -0.02, 0, 0.02, 0.05];
+    const refineC = [-0.02, 0, 0.02];
 
-    for (let l = minL; l <= maxL; l++) {
-      for (let s = minS; s <= maxS; s++) {
-        const testHsl = { ...currentHsl, l: l / 100, s: s / 100 };
-        const testRgb = hslToRgb(testHsl);
+    const fineFg = mode === 'bg-only' ? [best.fg] : refineL.flatMap(dl => refineC.map(dc => oklchToRgb({ 
+      l: Math.max(0, Math.min(1, bestFgLch.l + dl)), 
+      c: Math.max(0, Math.min(0.4, bestFgLch.c + dc)), 
+      h: fgOklch.h 
+    })));
+    const fineBg = mode === 'fg-only' ? [best.bg] : refineL.flatMap(dl => refineC.map(dc => oklchToRgb({ 
+      l: Math.max(0, Math.min(1, bestBgLch.l + dl)), 
+      c: Math.max(0, Math.min(0.4, bestBgLch.c + dc)), 
+      h: bgOklch.h 
+    })));
 
-        const wcag = checkWcagCompliance(testRgb, bg);
-        const iso = checkIsoCompliance(testRgb, bg);
-
-        if (wcag.ratio >= targetRatio && (!enforceIso || iso.passesIso24505)) {
-          const testLab = rgbToLab(testRgb);
-          const deltaE = ciede2000(currentLab, testLab);
-          if (deltaE < minDeltaE) {
-            minDeltaE = deltaE;
-            bestPass = testRgb;
+    for (const f of fineFg) {
+      for (const b of fineBg) {
+        if (checkPass(f, b)) {
+          const d = calculateScore(f, b);
+          if (d < minDistance) {
+            minDistance = d;
+            best = { fg: f, bg: b, distance: d };
           }
         }
       }
     }
   }
 
-  // 3. Fallback: if nothing passed both WCAG + ISO, find highest contrast along this hue
-  if (!bestPass) {
-    let maxRatio = -1;
-    let fallbackRgb: RgbColor = fg;
-
-    for (let l = 0; l <= 100; l++) {
-      const testHsl = { ...currentHsl, l: l / 100 };
-      const testRgb = hslToRgb(testHsl);
-      const wcag = checkWcagCompliance(testRgb, bg);
-
-      if (wcag.ratio > maxRatio) {
-        maxRatio = wcag.ratio;
-        fallbackRgb = testRgb;
-      }
-    }
-    return fallbackRgb;
-  }
-
-  return bestPass;
+  return best ? { fg: best.fg, bg: best.bg } : null;
 }
