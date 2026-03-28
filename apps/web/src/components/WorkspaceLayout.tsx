@@ -5,7 +5,7 @@ import FileDropzone from './FileDropzone';
 import PdfOverlayCanvas from './PdfOverlayCanvas';
 import RecommendationCard from './RecommendationCard';
 import { extractPdf } from '../lib/pdf-extractor';
-import { Download } from 'lucide-react';
+import { Download, ListFilter, FileOutput, FileJson, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 
 export default function WorkspaceLayout() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
@@ -16,6 +16,7 @@ export default function WorkspaceLayout() {
   const [previewSource, setPreviewSource] = useState<'original' | 'recommended'>('original');
   const [cvdSimulation, setCvdSimulation] = useState<'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'>('none');
   const [showOverlays, setShowOverlays] = useState(true);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'fixes' | 'export'>('fixes');
   const [customResultsMap, setCustomResultsMap] = useState<Record<string, string>>({}); // elementId -> hex
 
   /** Download all color recommendations as a structured JSON file */
@@ -43,7 +44,6 @@ export default function WorkspaceLayout() {
             contrastRatio: wcag.ratio.toFixed(2),
             passesWcagAA: wcag.passesAA,
             passesIso24505: iso.passesIso24505,
-            deltaL: iso.deltaL.toFixed(1),
             deltaE_normal: iso.normalDeltaE.toFixed(1),
             deltaE_PD: iso.deltaE_PD.toFixed(1),
             deltaE_T: iso.deltaE_T.toFixed(1)
@@ -131,9 +131,7 @@ export default function WorkspaceLayout() {
               
               let detailedReason = '色相（色味）を維持したまま、明暗差（コントラスト）を調整して基準をクリアしました。';
               if (iso.isProblematicPairing) {
-                detailedReason = '（赤と緑など）色覚多様性の視界では似通って見えてしまう配色です。ISO原則に基づき、色相に依存しなくても区別できる十分な明度差（Lab色空間）を確保するよう調整しました。';
-              } else if (!iso.luminanceContrastPasses) {
-                detailedReason = '高齢者やロービジョン（弱視）の方でもはっきり文字の形を認識できるよう、ISO 24505-2の原則に基づき、Lab色空間において十分な明度差（ΔL* >= 20）を確保するよう明度を調整しました。';
+                detailedReason = '（赤と緑など）色覚特性のある方の視界では似通って見えてしまう配色です。色相に依存しなくても区別できる十分なコントラスト（知覚色差 ΔE₀₀）を確保するよう調整しました。';
               } else if (!wcag.passesAA) {
                 detailedReason = 'WCAG AA基準（コントラスト比 4.5 以上）を満たすよう、色相を変えずに文字の明度を調整して視認性を高めました。';
               }
@@ -284,77 +282,134 @@ export default function WorkspaceLayout() {
 
       {/* Right Pane: Issues & Fixes */}
       <div className="w-[400px] flex-shrink-0 bg-white border rounded-xl shadow-sm flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b bg-slate-50 font-bold text-slate-800 flex justify-between items-center shadow-sm z-10">
-          <span>修正の提案</span>
-          <div className="flex gap-2 text-sm font-normal items-center">
-            <button 
-              onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex - 1 + report.issues.length) % report.issues.length].elementId)}
-              className="px-2 py-1 bg-white border rounded hover:bg-slate-100 text-slate-600 transition-colors"
-            >
-              前へ
-            </button>
-            <span className="text-slate-500 text-[10px] font-mono">{selectedIssueIndex + 1} / {report.issues.length}</span>
-            <button 
-              onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex + 1) % report.issues.length].elementId)}
-              className="px-2 py-1 bg-emerald-600 text-white border border-emerald-700 rounded hover:bg-emerald-700 transition-colors"
-            >
-              次へ
-            </button>
-          </div>
+        <div className="flex bg-slate-50 border-b z-10">
+          <button 
+            onClick={() => setActiveSidebarTab('fixes')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-all border-b-2 ${activeSidebarTab === 'fixes' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+          >
+            <ListFilter className="w-4 h-4" /> 修正提案
+          </button>
+          <button 
+            onClick={() => setActiveSidebarTab('export')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-all border-b-2 ${activeSidebarTab === 'export' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+          >
+            <FileOutput className="w-4 h-4" /> レポート出力
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-          {!selectedDetails && (
-            <div className="text-slate-500 text-center py-12">左側のハイライトをクリックして詳細を確認</div>
-          )}
-          
-          {selectedDetails && selectedIssue && selectedRec && (
-            <RecommendationCard 
-              element={selectedDetails}
-              issue={selectedIssue}
-              recommendation={selectedRec}
-              onAdjust={(id, hex) => {
-                setCustomResultsMap(prev => ({ ...prev, [id]: hex }));
-              }}
-              onExportJson={handleExportJson}
-              onExportCsv={handleExportCsv}
-            />
-          )}
 
-          {selectedDetails && !selectedIssue && (() => {
-            const fg = parseHex(selectedDetails.foregroundColor);
-            const bg = parseHex(selectedDetails.backgroundColor);
-            if (!fg || !bg) return null;
-            const wcag = checkWcagCompliance(fg, bg);
-            const iso = checkIsoCompliance(fg, bg);
-            return (
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-800 text-sm flex flex-col gap-2">
-                <span className="font-bold">✓ 基準クリア</span>
-                <p>このテキストは充分なコントラスト比があり、ISO基準も満たしています。</p>
-                <div className="text-[11px] bg-white/60 p-2 rounded border border-green-100 flex flex-col gap-1 mt-2 text-green-900">
-                  <div className="flex justify-between">
-                    <span>WCAGコントラスト比 (目標 4.50):</span>
-                    <span className="font-bold">{wcag.ratio.toFixed(2)} : 1</span>
+        {activeSidebarTab === 'fixes' && (
+          <div className="px-4 py-2.5 bg-slate-100 border-b flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <span>エラー箇所を調整</span>
+            <div className="flex gap-2 items-center">
+              <button 
+                onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex - 1 + report.issues.length) % report.issues.length].elementId)}
+                className="p-1 px-1.5 bg-white border rounded hover:bg-slate-50 text-slate-600 transition-colors"
+              >
+                ←
+              </button>
+              <span className="font-mono text-slate-700">{selectedIssueIndex + 1} / {report.issues.length}</span>
+              <button 
+                onClick={() => setSelectedElementId(report.issues[(selectedIssueIndex + 1) % report.issues.length].elementId)}
+                className="p-1 px-1.5 bg-white border rounded hover:bg-slate-50 text-slate-600 transition-colors"
+              >
+                →
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+          {activeSidebarTab === 'fixes' ? (
+            <>
+              {!selectedDetails && (
+                <div className="text-slate-500 text-center py-12">左側のハイライトをクリックして詳細を確認</div>
+              )}
+              
+              {selectedDetails && selectedIssue && selectedRec && (
+                <RecommendationCard 
+                  element={selectedDetails}
+                  issue={selectedIssue}
+                  recommendation={selectedRec}
+                  onAdjust={(id, hex) => {
+                    setCustomResultsMap(prev => ({ ...prev, [id]: hex }));
+                  }}
+                />
+              )}
+
+              {selectedDetails && !selectedIssue && (() => {
+                const fg = parseHex(selectedDetails.foregroundColor);
+                const bg = parseHex(selectedDetails.backgroundColor);
+                if (!fg || !bg) return null;
+                const wcag = checkWcagCompliance(fg, bg);
+                const iso = checkIsoCompliance(fg, bg);
+                return (
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-800 text-sm flex flex-col gap-2">
+                    <span className="font-bold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> 基準クリア</span>
+                    <p>このテキストは充分なコントラスト比があり、ISO基準も満たしています。</p>
+                    <div className="text-[11px] bg-white/60 p-2 rounded border border-green-100 flex flex-col gap-1 mt-2 text-green-900">
+                      <div className="flex justify-between">
+                        <span>WCAGコントラスト比 (目標 4.50):</span>
+                        <span className="font-bold">{wcag.ratio.toFixed(2)} : 1</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>明度差 ΔL* (目標 20.0):</span>
-                    <span className="font-bold">{iso.deltaL?.toFixed(1)}</span>
+                );
+              })()}
+            </>
+          ) : (
+            <div className="flex flex-col gap-6">
+              <div className="bg-slate-50 border rounded-xl p-5 flex flex-col gap-4">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <Download className="w-4 h-4 text-emerald-600" /> レポートのエクスポート
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  すべての修正提案と、手動で調整した色を含むレポートを保存します。
+                </p>
+                <div className="grid grid-cols-1 gap-3 mt-2">
+                  <button 
+                    onClick={handleExportJson}
+                    className="flex items-center justify-between px-4 py-3 bg-white border border-emerald-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileJson className="w-5 h-5 text-emerald-600" />
+                      <div className="text-left">
+                        <div className="text-sm font-bold text-slate-800">JSON形式</div>
+                        <div className="text-[10px] text-slate-500 font-medium">エンジニア向け・全データを含む</div>
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-slate-300 group-hover:text-emerald-500" />
+                  </button>
+                  <button 
+                    onClick={handleExportCsv}
+                    className="flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-100 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="w-5 h-5 text-slate-600" />
+                      <div className="text-left">
+                        <div className="text-sm font-bold text-slate-800">CSV形式</div>
+                        <div className="text-[10px] text-slate-500 font-medium">表計算ソフト・デザインツール向け</div>
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-slate-300 group-hover:text-slate-500" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-1 flex flex-col gap-4">
+                <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-1">現在のステータス</h3>
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-white border rounded-lg p-3">
+                    <div className="text-xl font-black text-slate-800">{report.issues.length}</div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">総検出数</div>
                   </div>
-                  <div className="flex justify-between border-t border-green-200 mt-1 pt-1">
-                    <span>通常色差 CIEDE2000 ΔE₀₀:</span>
-                    <span className="font-bold">{iso.normalDeltaE?.toFixed(1)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>P/D型ΔE₀₀推定 (目標 18.0):</span>
-                    <span className="font-bold">{iso.deltaE_PD?.toFixed(1)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>T型ΔE₀₀推定 (目標 18.0):</span>
-                    <span className="font-bold">{iso.deltaE_T?.toFixed(1)}</span>
+                  <div className="bg-white border rounded-lg p-3">
+                    <div className="text-xl font-black text-emerald-600">{Object.keys(customResultsMap).length}</div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">手動調整済み</div>
                   </div>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          )}
         </div>
       </div>
     </div>

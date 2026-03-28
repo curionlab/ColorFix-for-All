@@ -1,14 +1,10 @@
----
-// colorfix_for_all_lp.html のデザインをベースに、PDF解析アプリ向けに調整したランディングページ
----
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ColorFix for All — 色をなおす、デザインを守る</title>
-  <meta name="description" content="PDFをドラッグ＆ドロップするだけ。色覚多様性とロービジョンに配慮した改善色を、元デザインの印象をできるだけ保ちながら提案します。" />
+  <meta name="description" content="PDFをドラッグ＆ドロップするだけ。色覚特性のある方が識別しやすい改善色を、元デザインの色相をできるだけ保ちながら提案します。" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
     :root {
@@ -36,7 +32,6 @@
     a:hover { color: var(--primary-light); }
     .container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
 
-    /* NAV */
     nav {
       position: sticky; top: 0; z-index: 100;
       background: rgba(250,255,254,0.97); backdrop-filter: blur(8px);
@@ -54,7 +49,6 @@
     .nav-cta { background: var(--primary-btn); color: #FFF; border: none; padding: 9px 22px; border-radius: 6px; font-size: 0.88rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: background .15s; display: inline-block; }
     .nav-cta:hover { background: #0F3D28; color: #FFF; }
 
-    /* HERO */
     .hero {
       background: linear-gradient(140deg, #0D3522 0%, #1A8A52 100%);
       color: #FFF;
@@ -83,7 +77,6 @@
     .btn-secondary { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.40); color: #FFF; }
     .btn-secondary:hover { background: rgba(255,255,255,0.20); color: #FFF; }
 
-    /* HERO DEMO */
     .demo-compare-wrap {
       background: rgba(0,0,0,0.20);
       border: 1px solid rgba(255,255,255,0.18);
@@ -131,31 +124,29 @@
     .demo-arrow-icon { font-size: 1.3rem; color: #F0C040; font-weight: 900; line-height: 1; }
     .demo-arrow-note { font-size: 0.7rem; color: #FFFFFF; font-weight: 700; text-align: center; line-height: 1.5; background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 6px; margin-top: 6px; }
 
-    /* SECTIONS */
     .section-white { background: var(--bg); padding: 80px 0; }
     .section-alt { background: var(--bg-alt); padding: 80px 0; }
     .section-tag { display: inline-block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--primary); background: var(--primary-pale); padding: 3px 10px; border-radius: 4px; margin-bottom: 12px; }
     h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 900; line-height: 1.25; margin-bottom: 14px; letter-spacing: -0.02em; color: var(--text); }
     .section-lead { font-size: 1.02rem; color: var(--text-secondary); max-width: 560px; margin-bottom: 48px; line-height: 1.75; }
 
-    /* CARDS */
     .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
     .problem-item { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 28px 24px; box-shadow: var(--shadow); }
     .problem-icon { font-size: 2rem; margin-bottom: 14px; }
     .problem-item h3 { font-size: 1rem; font-weight: 800; margin-bottom: 8px; color: var(--text); }
     .problem-item p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.65; }
 
-    /* DIFF TABLE */
     .diff-table { width: 100%; border-collapse: collapse; margin-top: 40px; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
     .diff-table th { font-size: 0.85rem; font-weight: 800; padding: 14px 20px; text-align: left; background: #0D3522; color: #FFF; }
     .diff-table td { padding: 14px 20px; font-size: 0.9rem; border-bottom: 1px solid var(--border); color: var(--text); }
     .diff-table tr:last-child td { border-bottom: none; }
     .diff-table tr:hover td { background: var(--bg-alt); }
+    .diff-table tfoot td { padding: 12px 20px; font-size: 0.8rem; color: var(--text-secondary); border-top: 1px solid var(--border); }
     .feature-name { font-weight: 700; }
     .check { color: #1A6B38; font-size: 1.1rem; font-weight: 700; }
     .cross { color: #B03020; font-size: 1.1rem; font-weight: 700; }
+    .partial { color: #856B00; font-size: 0.95rem; font-weight: 700; }
 
-    /* STEPS */
     .steps { display: flex; flex-direction: column; margin-top: 48px; }
     .step { display: grid; grid-template-columns: 72px 1fr; align-items: stretch; }
     .step-left { display: flex; flex-direction: column; align-items: center; }
@@ -166,7 +157,6 @@
     .step-body h3 { font-size: 1.08rem; font-weight: 800; margin-bottom: 6px; color: var(--text); }
     .step-body p { font-size: 0.92rem; color: var(--text-secondary); }
 
-    /* FEATURES */
     .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
     .feature-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 28px 24px; box-shadow: var(--shadow); transition: box-shadow .2s, transform .2s; }
     .feature-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
@@ -174,13 +164,11 @@
     .feature-card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 8px; color: var(--text); }
     .feature-card p { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.65; }
 
-    /* STANDARD */
     .standard-box { background: var(--surface); border: 1.5px solid #8CC8A8; border-left: 5px solid var(--primary); border-radius: var(--radius); padding: 28px 32px; margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .standard-item h4 { font-size: 0.88rem; font-weight: 800; color: var(--primary); margin-bottom: 5px; }
     .standard-item p { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.65; }
     .standard-note { grid-column: 1 / -1; font-size: 0.82rem; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 16px; }
 
-    /* FAQ */
     .faq-list { margin-top: 44px; display: flex; flex-direction: column; gap: 10px; }
     details { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     details[open] { border-color: #52B788; }
@@ -189,7 +177,6 @@
     details[open] summary::after { transform: rotate(45deg); }
     .faq-body { padding: 0 24px 20px; font-size: 0.92rem; color: var(--text-secondary); line-height: 1.75; }
 
-    /* CTA BOTTOM */
     .cta-section { background: #0D3522; color: #FFF; text-align: center; padding: 100px 24px; }
     .cta-section h2 { color: #FFF; margin-bottom: 16px; }
     .cta-section p { color: #C8E8D8; margin-bottom: 36px; font-size: 1.05rem; line-height: 1.75; }
@@ -197,7 +184,6 @@
     .btn-cta-primary { background: #E8B020; color: #1A2010; }
     .btn-cta-primary:hover { background: #F0C040; color: #1A2010; }
 
-    /* FOOTER */
     footer { background: #081A0E; color: rgba(255,255,255,0.70); padding: 40px 24px; }
     .footer-inner { max-width: var(--max-w); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
     .footer-logo { font-weight: 900; color: #90C8A8; font-size: 1rem; }
@@ -223,7 +209,7 @@
     <ul class="nav-links">
       <li><a href="#how">使い方</a></li>
       <li><a href="#features">機能</a></li>
-      <li><a href="#standard">規格</a></li>
+      <li><a href="#standard">技術根拠</a></li>
       <li><a href="#faq">FAQ</a></li>
     </ul>
     <a href="/app" class="nav-cta">PDFで試す &rarr;</a>
@@ -234,10 +220,10 @@
 <div class="hero">
   <div class="hero-inner">
     <div>
-      <div class="hero-badge">&#x1F52C; ISO 24505-2:2025 準拠設計</div>
+      <div class="hero-badge">&#x1F52C; ISO 24505-2:2025 の考え方を参照</div>
       <h1>色をなおす、<br><span class="em">デザインを守る。</span></h1>
       <p class="hero-desc">
-        PDFをブラウザにドロップするだけ。色覚多様性とロービジョンに配慮した<strong>改善色</strong>を、元デザインの印象をできるだけ保ちながら提案します。
+        PDFをブラウザにドロップするだけ。色覚特性のある方が識別しやすい<strong>改善候補色</strong>を、元デザインの色相をできるだけ保ちながら提案します。
       </p>
       <div class="hero-actions">
         <a href="/app" class="btn btn-primary">PDFで試す &rarr;</a>
@@ -245,11 +231,9 @@
       </div>
     </div>
 
-    <!-- Before/After デモ：実際の文字の見え方を左右で比較 -->
+    <!-- Before/After デモ -->
     <div class="hero-visual">
       <div class="demo-compare-wrap">
-
-        <!-- BEFORE -->
         <div class="demo-col">
           <span class="demo-col-label bad-label">&#9888; BEFORE — 修正前</span>
           <div class="demo-page">
@@ -266,13 +250,11 @@
           <p class="demo-verdict bad-verdict">白背景では読みにくい</p>
         </div>
 
-        <!-- 変換の矢印と説明 -->
         <div class="demo-arrow-col">
           <div class="demo-arrow-icon">&rarr;</div>
           <div class="demo-arrow-note">明度を下げて<br>緑を維持</div>
         </div>
 
-        <!-- AFTER -->
         <div class="demo-col">
           <span class="demo-col-label good-label">&#10003; AFTER — 修正後</span>
           <div class="demo-page good">
@@ -288,7 +270,6 @@
           </div>
           <p class="demo-verdict good-verdict">緑の印象を保ちつつ読みやすく</p>
         </div>
-
       </div>
     </div>
   </div>
@@ -298,12 +279,24 @@
 <div class="section-alt" id="problem">
   <div class="container">
     <span class="section-tag">課題</span>
-    <h2>既存のPDFアクセシビリティツールは<br>「直せない」</h2>
+    <h2>「問題の指摘」だけでは<br>デザインは直せない</h2>
     <p class="section-lead">シミュレーターは「見え方」を教えてくれますが、現場で必要なのは「具体的な改善値」です。</p>
     <div class="problem-grid">
-      <div class="problem-item"><div class="problem-icon">&#x1F441;&#xFE0F;</div><h3>シミュレーションだけで終わる</h3><p>「こう見える」は分かっても「どう直せばよいか」を返してくれるツールはほとんどありません。</p></div>
-      <div class="problem-item"><div class="problem-icon">&#x274C;</div><h3>AIによる不安定な推論</h3><p>AIやVLMに頼ると、毎回違う色を提案されたり、元のデザイン意図を無視した色が返されることがあります。</p></div>
-      <div class="problem-item"><div class="problem-icon">&#x1F3A8;</div><h3>ブランドが壊れる</h3><p>ただコントラストを上げようと黒や白に寄せてしまうと、ブランドの「色相」が失われてしまいます。</p></div>
+      <div class="problem-item">
+        <div class="problem-icon">&#x1F441;&#xFE0F;</div>
+        <h3>シミュレーションだけで終わる</h3>
+        <p>「こう見える」は分かっても「どう直せばよいか」を返してくれるツールはほとんどありません。</p>
+      </div>
+      <div class="problem-item">
+        <div class="problem-icon">&#x274C;</div>
+        <h3>具体的な修正値まで返せるツールが少ない</h3>
+        <p>多くのチェックツールは「問題箇所の指摘」にとどまります。元の色相を保ちながら具体的な改善値まで踏み込めるものは限られています。</p>
+      </div>
+      <div class="problem-item">
+        <div class="problem-icon">&#x1F3A8;</div>
+        <h3>ブランドが壊れる</h3>
+        <p>コントラストを上げようと黒や白に寄せてしまうと、ブランドの「色相」が失われてしまいます。</p>
+      </div>
     </div>
   </div>
 </div>
@@ -316,15 +309,44 @@
     <p class="section-lead">PDF上のコントラスト判定の先、具体的な色数値まで踏み込みます。</p>
     <table class="diff-table">
       <thead>
-        <tr><th>機能</th><th>シミュレーター</th><th>一般的なAIツール</th><th>ColorFix for All</th></tr>
+        <tr>
+          <th>機能</th>
+          <th>カラーシミュレーター /<br>チェッカー（一般）</th>
+          <th>ColorFix for All</th>
+        </tr>
       </thead>
       <tbody>
-        <tr><td class="feature-name">色覚多様性の見え方確認</td><td><span class="check">&#10004;</span></td><td><span class="partial">&#9651; 不確定</span></td><td><span class="check">&#10004; 数理ベース</span></td></tr>
-        <tr><td class="feature-name">機密PDFのローカル処理</td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007; サーバー送信</span></td><td><span class="check">&#10004; ブラウザ完結</span></td></tr>
-        <tr><td class="feature-name">具体的な改善色の提案</td><td><span class="cross">&#10007;</span></td><td><span class="partial">&#9651; コロコロ変わる</span></td><td><span class="check">&#10004; Delta E最小化</span></td></tr>
-        <tr><td class="feature-name">元の色相を保つ補正</td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td><td><span class="check">&#10004;</span></td></tr>
-        <tr><td class="feature-name">ISO 24505-2:2025 準拠設計</td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td><td><span class="check">&#10004;</span></td></tr>
+        <tr>
+          <td class="feature-name">色覚特性の見え方確認</td>
+          <td><span class="check">&#10004;</span></td>
+          <td><span class="check">&#10004; CVDシミュレーション</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">機密PDFのローカル処理</td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="check">&#10004; ブラウザ完結</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">具体的な改善候補色の提案</td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="check">&#10004; WCAGコントラスト確保＋ΔE00で識別性を評価</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">元の色相を保つ補正</td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="check">&#10004;</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">CVDシミュレーション＋知覚色差（ΔE00）による評価</td>
+          <td><span class="partial">&#9651; ツール依存</span></td>
+          <td><span class="check">&#10004;</span></td>
+        </tr>
       </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">※ 「カラーシミュレーター / チェッカー（一般）」欄は、主に問題箇所の可視化を目的とするツールの一般的な特性をまとめたものです。個別ツールの機能を評価・検証したものではありません。</td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </div>
@@ -334,11 +356,29 @@
   <div class="container">
     <span class="section-tag">使い方</span>
     <h2>3ステップでPDFを改善</h2>
-    <p class="section-lead">サーバーへのアップロード不要。機密の社内資料もブラウザ内で安全に解析します。</p>
+    <p class="section-lead">サーバーへのアップロード不要。機密の社内資料もブラウザ内で解析します。</p>
     <div class="steps">
-      <div class="step"><div class="step-left"><div class="step-num">1</div><div class="step-line"></div></div><div class="step-body"><h3>PDFをドロップ</h3><p>分析したいPDFファイルを画面にドラッグ＆ドロップします。</p></div></div>
-      <div class="step"><div class="step-left"><div class="step-num">2</div><div class="step-line"></div></div><div class="step-body"><h3>自動解析</h3><p>ブラウザ上で直接テキストと背景色を描画・サンプリングし、見えづらい箇所をハイライトします。</p></div></div>
-      <div class="step"><div class="step-left"><div class="step-num">3</div><div class="step-line"></div></div><div class="step-body"><h3>改善候補を受け取る</h3><p>色味（Hue）を保ったまま、明度と彩度を数学的に調整した「正しい色」をワンクリックでコピーできます。</p></div></div>
+      <div class="step">
+        <div class="step-left"><div class="step-num">1</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <h3>PDFをドロップ</h3>
+          <p>分析したいPDFファイルを画面にドラッグ＆ドロップします。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-left"><div class="step-num">2</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <h3>自動解析</h3>
+          <p>ブラウザ上でテキストと背景色をサンプリングし、色覚特性の観点で識別しにくい箇所をハイライトします。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-left"><div class="step-num">3</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <h3>改善候補を受け取る</h3>
+          <p>色相（Hue）をできるだけ保ちながら、明度・彩度を最小限調整した<strong>改善候補色</strong>をワンクリックでコピーできます。</p>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -349,10 +389,26 @@
     <span class="section-tag">機能</span>
     <h2>主要機能</h2>
     <div class="features-grid">
-      <div class="feature-card"><span class="icon">&#x1F50D;</span><h3>文字の可読性ファースト</h3><p>不要な装飾や背景画像への過剰な指摘を排除し、テキスト文字のコントラスト評価にフォーカスします。</p></div>
-      <div class="feature-card"><span class="icon">&#x1F3AF;</span><h3>差分最小の改善提案 (Delta E)</h3><p>CIELAB色空間で元の色との知覚的距離（Delta E）を最小化する独自の2Dグリッドサーチでブランドを保護します。</p></div>
-      <div class="feature-card"><span class="icon">&#x1F465;</span><h3>色覚多様性・ロービジョン対応</h3><p>WCAGに加え、P型/D型/T型色覚やロービジョンの視界に配慮した評価を行います。</p></div>
-      <div class="feature-card"><span class="icon">&#x1F512;</span><h3>完全オフライン・安全</h3><p>pdf.jsを利用してブラウザ内でのみ画素を展開。文書が外部サーバーに送信されることはありません。</p></div>
+      <div class="feature-card">
+        <span class="icon">&#x1F50D;</span>
+        <h3>文字の可読性ファースト</h3>
+        <p>不要な装飾や背景画像への過剰な指摘を排除し、テキスト文字のコントラスト評価にフォーカスします。</p>
+      </div>
+      <div class="feature-card">
+        <span class="icon">&#x1F3AF;</span>
+        <h3>差分最小の改善提案（ΔE00）</h3>
+        <p>CIELAB色空間で元の色との知覚的距離（ΔE00）を最小化する2Dグリッドサーチで探索します。色相を固定して明度・彩度だけを動かすため、元の色の印象を保ちやすくなっています。</p>
+      </div>
+      <div class="feature-card">
+        <span class="icon">&#x1F465;</span>
+        <h3>色覚特性（P型・D型・T型）に対応</h3>
+        <p>プロタノピア・デュータノピア・トリタノピアの3タイプのCVDシミュレーションを行い、それぞれの見え方で識別できるかを評価します。</p>
+      </div>
+      <div class="feature-card">
+        <span class="icon">&#x1F512;</span>
+        <h3>完全ローカル処理</h3>
+        <p>pdf.jsを利用してブラウザ内でのみ画素を展開します。文書が外部サーバーに送信されません。</p>
+      </div>
     </div>
   </div>
 </div>
@@ -360,13 +416,27 @@
 <!-- STANDARD -->
 <div class="section-alt" id="standard">
   <div class="container">
-    <span class="section-tag">規格根拠</span>
-    <h2>科学的根拠に基づく提案</h2>
-    <p class="section-lead">感覚ではなく、国際規格の考え方を参照した評価ロジックで動いています。</p>
+    <span class="section-tag">技術根拠</span>
+    <h2>科学的手法に基づく設計</h2>
+    <p class="section-lead">感覚ではなく、公開された研究・規格の手法を参照した評価ロジックで動いています。</p>
     <div class="standard-box">
-      <div class="standard-item"><h4>ISO 24505-2:2025</h4><p>色弱およびロービジョンの方のための色の組合せ法を定める国際規格。産総研が制定に参画し、公開説明を行っています。</p></div>
-      <div class="standard-item"><h4>WCAG 2.2</h4><p>Webアクセシビリティの国際標準。PDFのテキストコンポーネントにおける最低限のコントラスト比を満たすか検証します。</p></div>
-      <p class="standard-note">※ このサービスは「ISO準拠を保証」するものではありません。産総研の公開説明と規格概要に基づく設計を採用しています。</p>
+      <div class="standard-item">
+        <h4>ISO 24505-2:2025（参照）</h4>
+        <p>色覚特性・ロービジョン向けの配色法を定める国際規格。産総研が制定に参画しており、公開プレスリリースを参考に設計しています。規格本文の完全な再現ではありません。</p>
+      </div>
+      <div class="standard-item">
+        <h4>WCAG 2.2</h4>
+        <p>Webアクセシビリティの国際標準。PDFのテキストコンポーネントにおけるコントラスト比の検証基準として採用しています。</p>
+      </div>
+      <div class="standard-item">
+        <h4>CVDシミュレーション（Brettel/Viénot 1997/1999）</h4>
+        <p>色覚特性をもつ方の見え方を数値的に再現する手法。P型・D型・T型の3タイプを線形RGB空間で変換します。</p>
+      </div>
+      <div class="standard-item">
+        <h4>CIEDE2000（ΔE00）</h4>
+        <p>人の知覚に近い色差を計算するCIE標準指標。色の「見かけの差」を均一な尺度で測り、改善候補色の選定に使用します。</p>
+      </div>
+      <p class="standard-note">※ このサービスはISO 24505-2 の規格準拠を保証するものではありません。ISO 24505-2 は色のカテゴリー性と基本色領域（マンセル表色系）に基づく規格です。本サービスはその目的（色覚特性のある方が識別しやすい配色）を共有しつつ、CVDシミュレーション＋ΔE00（知覚色差）という異なる手法で近似的に実装しています。ΔE00の判定閾値など具体的な数値は、規格本文ではなく本サービスの設計判断に基づいています。</p>
     </div>
   </div>
 </div>
@@ -377,9 +447,22 @@
     <span class="section-tag">FAQ</span>
     <h2>よくある質問</h2>
     <div class="faq-list">
-      <details><summary>無料で使えますか？</summary><div class="faq-body">はい、基本機能は無料で使えます。現在、すべての分析と色の改善提案はブラウザ上で完結します。</div></details>
-      <details><summary>機密情報を含むPDFをアップロードしても安全ですか？</summary><div class="faq-body">はい。ファイルの解析（テキスト抽出からピクセルカラーのサンプリングまで）はすべてあなたの使っているブラウザの内部でのみ実行されます。外部サーバーにPDFが送信されることは絶対にありません。</div></details>
-      <details><summary>どんなファイルが対象ですか？</summary><div class="faq-body">現在はPDFファイルのみ対応しています。画像やPowerPointファイルの直接サポートは今後のアップデートを予定しています。</div></details>
+      <details>
+        <summary>無料で使えますか？</summary>
+        <div class="faq-body">はい、基本機能は無料で使えます。現在、すべての分析と改善候補色の提案はブラウザ上で完結します。</div>
+      </details>
+      <details>
+        <summary>機密情報を含むPDFを使っても安全ですか？</summary>
+        <div class="faq-body">ファイルの解析（テキスト抽出からピクセルカラーのサンプリングまで）はすべてお使いのブラウザの内部でのみ実行されます。外部サーバーにPDFは送信されません。</div>
+      </details>
+      <details>
+        <summary>どんなファイルが対象ですか？</summary>
+        <div class="faq-body">現在はPDFファイルのみ対応しています。画像やPowerPointファイルの直接サポートは今後のアップデートを予定しています。</div>
+      </details>
+      <details>
+        <summary>提案された色は必ず正しいですか？</summary>
+        <div class="faq-body">提案色はあくまで「改善候補」です。ΔE00を最小化する数理的な探索によって、元の色相をできるだけ保ちながらコントラスト基準を満たす色を探しますが、最終的なデザイン判断は人間が行うことを前提にしています。</div>
+      </details>
     </div>
   </div>
 </div>
@@ -388,7 +471,7 @@
 <div class="cta-section">
   <div class="container">
     <h2>デザインを壊さず、<br>すべての人に見やすく。</h2>
-    <p>ColorFix for All は、数理アルゴリズムに基づいたカラーアクセシビリティ修正ツールです。<br>手元にあるPDFをドラッグ＆ドロップして確かめてみてください。</p>
+    <p>ColorFix for All は、CVDシミュレーションとΔE00（知覚色差）による識別性評価を組み合わせ、WCAGコントラスト基準を満たす改善候補色を提案するツールです。<br>手元にあるPDFをドラッグ＆ドロップして確かめてみてください。</p>
     <div class="cta-actions">
       <a href="/app" class="btn btn-cta-primary">PDFで試す &rarr;</a>
     </div>
@@ -401,10 +484,10 @@
     <div class="footer-logo">ColorFix for All</div>
     <ul class="footer-links">
       <li><a href="#how">使い方</a></li>
-      <li><a href="#standard">規格</a></li>
+      <li><a href="#standard">技術根拠</a></li>
       <li><a href="https://www.aist.go.jp/aist_j/press_release/pr2025/pr20251031_2/pr20251031_2.html" target="_blank" rel="noopener">産総研 資料</a></li>
     </ul>
-    <p class="footer-note">ISO 24505-2:2025 の考え方を参照した設計。産総研の公開情報に基づく。<br>&copy; 2026 ColorFix for All</p>
+    <p class="footer-note">ISO 24505-2:2025 の考え方を参照した独自設計。産総研の公開情報に基づく。<br>&copy; 2026 ColorFix for All</p>
   </div>
 </footer>
 
