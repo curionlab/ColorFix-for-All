@@ -95,79 +95,83 @@ export default function WorkspaceLayout() {
 
   const handleFileSelect = async (file: File) => {
     setIsProcessing(true);
+    setSelectedElementId(null);
     try {
+      let result;
       if (file.type === 'application/pdf') {
-        const { elements, thumbnailUrl, width, height } = await extractPdf(file);
-        setPdfCanvasUrl(thumbnailUrl);
-        setPdfDimensions({ width, height });
-
-        // Analyze elements
-        const issues: any[] = [];
-        const recommendations: any[] = [];
-
-        elements.forEach(el => {
-          const fg = parseHex(el.foregroundColor);
-          const bg = parseHex(el.backgroundColor);
-          
-          if (!fg || !bg) return;
-
-          const wcag = checkWcagCompliance(fg, bg);
-          const iso = checkIsoCompliance(fg, bg);
-
-          if (!wcag.passesAA || !iso.passesIso24505) {
-            const issueId = `issue-${el.id}`;
-            issues.push({
-              id: issueId,
-              elementId: el.id,
-              message: `文字色と背景色の識別性が基準を満たしていません (WCAG AA: ${wcag.passesAA ? 'Pass' : 'Fail'}, ISO: ${iso.passesIso24505 ? 'Pass' : 'Fail'})`,
-              metrics: {
-                contrastRatio: wcag.ratio,
-                passesWcagAA: wcag.passesAA,
-                passesIso24505: iso.passesIso24505,
-                isoDetails: iso
-              }
-            });
-
-            const solution = findAccessibleColor(fg, bg, { mode: 'both', targetWcagRatio: 4.5 });
-            if (solution) {
-              const toHexStr = (c: any) => `#${c.r.toString(16).padStart(2,'0')}${c.g.toString(16).padStart(2,'0')}${c.b.toString(16).padStart(2,'0')}`;
-              
-              const fgHex = toHexStr(solution.fg);
-              const bgHex = toHexStr(solution.bg);
-              const wasBgChanged = bgHex.toLowerCase() !== el.backgroundColor.toLowerCase();
-
-              let detailedReason = 'OKLCH色空間上で色相を維持しつつ、通常視と色覚特性（CVD）シミュレーションの両方で十分なコントラスト比を確保しました。';
-              if (wasBgChanged) {
-                detailedReason = 'アクセシビリティ基準を満たすため、色相を保ちつつ文字色と背景色の両方を調整し、デザインの印象を損なわない範囲で視認性を最適化しました。';
-              }
-
-              recommendations.push({
-                issueId,
-                originalFg: el.foregroundColor,
-                originalBg: el.backgroundColor,
-                suggestedFg: fgHex,
-                suggestedBg: bgHex,
-                reason: detailedReason
-              });
-            }
-          }
-        });
-
-        setReport({
-          fileName: file.name,
-          elements,
-          issues,
-          recommendations
-        });
-        setCustomResultsMap({}); // Reset map for new file
-        
-        if (issues.length > 0) {
-          setSelectedElementId(issues[0].elementId);
-        }
+        const { extractPdf } = await import('../lib/pdf-extractor');
+        result = await extractPdf(file);
       } else if (file.type.startsWith('image/')) {
-        alert('現在はPDFファイルのみに対応しています。画像の解析は次期アップデートをお待ちください。');
+        const { extractImage } = await import('../lib/ocr-extractor');
+        result = await extractImage(file);
       } else {
-        alert('対応していないファイル形式です。PDFファイルを選択してください。');
+        throw new Error('サポートされていないファイル形式です');
+      }
+
+      setPdfCanvasUrl(result.thumbnailUrl);
+      setPdfDimensions({ width: result.width, height: result.height });
+
+      const issues: any[] = [];
+      const recommendations: any[] = [];
+
+      result.elements.forEach(el => {
+        const fg = parseHex(el.foregroundColor);
+        const bg = parseHex(el.backgroundColor);
+        
+        if (!fg || !bg) return;
+
+        const wcag = checkWcagCompliance(fg, bg);
+        const iso = checkIsoCompliance(fg, bg);
+
+        if (!wcag.passesAA || !iso.passesIso24505) {
+          const issueId = `issue-${el.id}`;
+          issues.push({
+            id: issueId,
+            elementId: el.id,
+            message: `文字色と背景色の識別性が基準を満たしていません (WCAG AA: ${wcag.passesAA ? 'Pass' : 'Fail'}, ISO: ${iso.passesIso24505 ? 'Pass' : 'Fail'})`,
+            metrics: {
+              contrastRatio: wcag.ratio,
+              passesWcagAA: wcag.passesAA,
+              passesIso24505: iso.passesIso24505,
+              isoDetails: iso
+            }
+          });
+
+          const solution = findAccessibleColor(fg, bg, { mode: 'both', targetWcagRatio: 4.5 });
+          if (solution) {
+            const toHexStr = (c: any) => `#${c.r.toString(16).padStart(2,'0')}${c.g.toString(16).padStart(2,'0')}${c.b.toString(16).padStart(2,'0')}`;
+            
+            const fgHex = toHexStr(solution.fg);
+            const bgHex = toHexStr(solution.bg);
+            const wasBgChanged = bgHex.toLowerCase() !== el.backgroundColor.toLowerCase();
+
+            let detailedReason = 'OKLCH色空間上で色相を維持しつつ、通常視と色覚特性（CVD）シミュレーションの両方で十分なコントラスト比を確保しました。';
+            if (wasBgChanged) {
+              detailedReason = 'アクセシビリティ基準を満たすため、色相を保ちつつ文字色と背景色の両方を調整し、デザインの印象を損なわない範囲で視認性を最適化しました。';
+            }
+
+            recommendations.push({
+              issueId,
+              originalFg: el.foregroundColor,
+              originalBg: el.backgroundColor,
+              suggestedFg: fgHex,
+              suggestedBg: bgHex,
+              reason: detailedReason
+            });
+          }
+        }
+      });
+
+      setReport({
+        fileName: file.name,
+        elements: result.elements,
+        issues,
+        recommendations
+      });
+      setCustomResultsMap({}); // Reset map for new file
+      
+      if (issues.length > 0) {
+        setSelectedElementId(issues[0].elementId);
       }
     } catch (e: any) {
       console.error(e);

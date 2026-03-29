@@ -6,7 +6,7 @@ import { toHex, parseHex } from '@colorfix/color-engine';
 // Use local worker or CDN. For simplicity, we can load from CDN in production
 GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs`;
 
-function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: string } {
+export function getForegroundBackgroundColors(imageData: ImageData): { fg: string, bg: string } {
   const { data, width, height } = imageData;
   
   const colorBorders = new Map<string, number>();
@@ -107,13 +107,13 @@ export async function extractPdf(file: File): Promise<{
   
   const loadingTask = getDocument({ 
     data: arrayBuffer,
-    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
+    cMapUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/cmaps/',
     cMapPacked: true,
-    standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/standard_fonts/'
+    standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/standard_fonts/'
   });
   const pdf = await loadingTask.promise;
   const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 2.0 });
+  const viewport = page.getViewport({ scale: 3.0 }); // Balanced resolution for OCR
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
@@ -125,44 +125,51 @@ export async function extractPdf(file: File): Promise<{
   await page.render({ canvasContext: ctx, viewport }).promise;
 
   const textContent = await page.getTextContent();
-  const elements: ExtractedTextElement[] = [];
+  let elements: ExtractedTextElement[] = [];
 
-  for (let i = 0; i < textContent.items.length; i++) {
-    const item = textContent.items[i] as TextItem;
-    if (item.str && item.str.trim() !== '') {
-      if (item.str.replace(/[\s.,\-_・]/g, '') === '') continue;
+  // FALLBACK: If no text items found, run OCR on the rendered canvas
+  if (textContent.items.length === 0) {
+    console.log('No embedded text found, falling back to OCR...');
+    const { extractScannedPdfPage } = await import('./ocr-extractor');
+    elements = await extractScannedPdfPage(canvas);
+  } else {
+    for (let i = 0; i < textContent.items.length; i++) {
+      const item = textContent.items[i] as TextItem;
+      if (item.str && item.str.trim() !== '') {
+        if (item.str.replace(/[\s.,\-_・]/g, '') === '') continue;
 
-      const tx = viewport.transform;
-      const x = (item.transform[4] * tx[0]) + (item.transform[5] * tx[2]) + tx[4];
-      const y = (item.transform[4] * tx[1]) + (item.transform[5] * tx[3]) + tx[5];
-      const w = item.width * viewport.scale;
-      const h = item.transform[0] * viewport.scale; 
-      const adjustedY = y - h;
+        const tx = viewport.transform;
+        const x = (item.transform[4] * tx[0]) + (item.transform[5] * tx[2]) + tx[4];
+        const y = (item.transform[4] * tx[1]) + (item.transform[5] * tx[3]) + tx[5];
+        const w = item.width * viewport.scale;
+        const h = item.transform[0] * viewport.scale; 
+        const adjustedY = y - h;
 
-      let bgColor = '#ffffff';
-      let fgColor = '#000000';
-      try {
-        const sx = Math.max(0, Math.floor(x - 2));
-        const sy = Math.max(0, Math.floor(adjustedY - 2));
-        const sw = Math.min(canvas.width - sx, Math.ceil(w + 4));
-        const sh = Math.min(canvas.height - sy, Math.ceil(h + 4));
-        
-        if (sw > 0 && sh > 0) {
-          const areaSample = ctx.getImageData(sx, sy, sw, sh);
-          const colors = getForegroundBackgroundColors(areaSample);
-          bgColor = colors.bg;
-          fgColor = colors.fg;
-        }
-      } catch(e) {}
+        let bgColor = '#ffffff';
+        let fgColor = '#000000';
+        try {
+          const sx = Math.max(0, Math.floor(x - 2));
+          const sy = Math.max(0, Math.floor(adjustedY - 2));
+          const sw = Math.min(canvas.width - sx, Math.ceil(w + 4));
+          const sh = Math.min(canvas.height - sy, Math.ceil(h + 4));
+          
+          if (sw > 0 && sh > 0) {
+            const areaSample = ctx.getImageData(sx, sy, sw, sh);
+            const colors = getForegroundBackgroundColors(areaSample);
+            bgColor = colors.bg;
+            fgColor = colors.fg;
+          }
+        } catch(e) {}
 
-      elements.push({
-        id: `text-${i}`,
-        text: item.str,
-        bounds: { x, y: adjustedY, width: w, height: h },
-        fontSize: item.transform[0],
-        foregroundColor: fgColor,
-        backgroundColor: bgColor
-      });
+        elements.push({
+          id: `text-${i}`,
+          text: item.str,
+          bounds: { x, y: adjustedY, width: w, height: h },
+          fontSize: item.transform[0],
+          foregroundColor: fgColor,
+          backgroundColor: bgColor
+        });
+      }
     }
   }
 
