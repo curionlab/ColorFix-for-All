@@ -4,7 +4,7 @@ import tailwind from '@astrojs/tailwind';
 
 export default defineConfig({
   site: 'https://curionlab.github.io',
-  base: '/ColorFix-for-All',
+  base: '/ColorFix-for-All/',
   integrations: [react(), tailwind({
     applyBaseStyles: true,
   })],
