@@ -2,10 +2,30 @@ import React, { useState, useEffect } from 'react';
 import type { AnalysisReport, ExtractedTextElement } from '../types';
 import { checkWcagCompliance, checkIsoCompliance, findAccessibleColor, parseHex } from '@colorfix/color-engine';
 import FileDropzone from './FileDropzone';
+import { 
+  Download, 
+  ListFilter, 
+  FileOutput, 
+  FileJson, 
+  FileSpreadsheet, 
+  CheckCircle2, 
+  Info, 
+  ZoomIn, 
+  ZoomOut, 
+  Maximize2,
+  Sliders,
+  Eye,
+  Copy
+} from 'lucide-react';
 import PdfOverlayCanvas from './PdfOverlayCanvas';
 import RecommendationCard from './RecommendationCard';
+import { 
+  SidebarAccordionSection, 
+  MetricDetails, 
+  ColorAdjustmentSection, 
+  SimulationPreview 
+} from './SidebarSections';
 import { extractPdf } from '../lib/pdf-extractor';
-import { Download, ListFilter, FileOutput, FileJson, FileSpreadsheet, CheckCircle2, Info } from 'lucide-react';
 
 export default function WorkspaceLayout() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
@@ -18,6 +38,13 @@ export default function WorkspaceLayout() {
   const [showOverlays, setShowOverlays] = useState(true);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'fixes' | 'export'>('fixes');
   const [customResultsMap, setCustomResultsMap] = useState<Record<string, { fg: string, bg: string }>>({}); // elementId -> {fg, bg}
+  const [zoomScale, setZoomScale] = useState(1.0);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    details: false,
+    adjustment: true,
+    simulation: false
+  });
+  const [copied, setCopied] = useState<boolean>(false);
 
   /** Download all color recommendations as a structured JSON file */
   const handleExportJson = () => {
@@ -205,9 +232,9 @@ export default function WorkspaceLayout() {
   const selectedRec = selectedIssue ? report.recommendations.find(r => r.issueId === selectedIssue.id) : null;
 
   return (
-    <div className="flex-1 flex flex-row overflow-hidden bg-slate-100 p-4 gap-4">
+    <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-100 p-2 lg:p-4 gap-2 lg:gap-4 min-h-0">
       {/* Left Pane: Visual Canvas */}
-      <div className="flex-1 rounded-xl shadow-sm border bg-white overflow-hidden relative flex flex-col">
+      <div className="flex-none h-[45svh] lg:h-auto lg:flex-1 rounded-xl shadow-sm border bg-white overflow-hidden relative flex flex-col min-h-0">
         <div className="px-4 py-3 border-b bg-slate-50 text-sm font-medium flex flex-wrap gap-4 items-center justify-between">
           <span className="text-slate-700 truncate min-w-[120px]">{report.fileName}</span>
           
@@ -266,11 +293,40 @@ export default function WorkspaceLayout() {
                 T型
               </button>
             </div>
-            
-            <span className="text-red-600 bg-red-100 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">{report.issues.length} 件のエラー</span>
+
+            {/* Zoom Selector */}
+            <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] items-center border border-slate-300">
+              <button 
+                onClick={() => setZoomScale(prev => Math.max(0.1, prev - 0.1))}
+                className="p-1 px-1.5 hover:bg-white rounded-md transition-colors text-slate-600"
+                title="縮小"
+              >
+                <ZoomOut className="w-3 h-3" />
+              </button>
+              <span className="px-2 font-mono text-slate-500 w-12 text-center">{Math.round(zoomScale * 100)}%</span>
+              <button 
+                onClick={() => setZoomScale(prev => Math.min(5.0, prev + 0.1))}
+                className="p-1 px-1.5 hover:bg-white rounded-md transition-colors text-slate-600"
+                title="拡大"
+              >
+                <ZoomIn className="w-3 h-3" />
+              </button>
+              <button 
+                onClick={() => {
+                  setZoomScale(1.0);
+                  // Optionally trigger a re-fit, but 1.0 should already be the "Fit" scale per my PdfOverlayCanvas logic
+                }}
+                className="p-1 px-1.5 bg-emerald-100/50 hover:bg-emerald-100 rounded-md transition-colors text-emerald-700 border-l border-slate-300 ml-0.5"
+                title="表示に合わせる"
+              >
+                <Maximize2 className="w-3 h-3" />
+              </button>
+            </div>
+
+            <span className="text-red-600 bg-red-100 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">{report.issues.length} 件</span>
           </div>
         </div>
-        <div className="flex-1 overflow-auto bg-slate-200 relative p-8 flex justify-center items-start">
+        <div className="flex-1 bg-slate-200 relative overflow-hidden">
           {pdfCanvasUrl && (
             <PdfOverlayCanvas 
               imageUrl={pdfCanvasUrl}
@@ -285,13 +341,14 @@ export default function WorkspaceLayout() {
               cvdSimulation={cvdSimulation}
               customResultsMap={customResultsMap}
               showOverlays={showOverlays}
+              zoomScale={zoomScale}
             />
           )}
         </div>
       </div>
 
       {/* Right Pane: Issues & Fixes */}
-      <div className="w-[400px] flex-shrink-0 bg-white border rounded-xl shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 lg:w-[400px] lg:flex-none bg-white border rounded-xl shadow-sm flex flex-col overflow-hidden">
         <div className="flex bg-slate-50 border-b z-10">
           <button 
             onClick={() => setActiveSidebarTab('fixes')}
@@ -328,23 +385,87 @@ export default function WorkspaceLayout() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 min-h-0">
           {activeSidebarTab === 'fixes' ? (
             <>
               {!selectedDetails && (
                 <div className="text-slate-500 text-center py-12">左側のハイライトをクリックして詳細を確認</div>
               )}
               
-              {selectedDetails && selectedIssue && selectedRec && (
-                <RecommendationCard 
-                  element={selectedDetails}
-                  issue={selectedIssue}
-                  recommendation={selectedRec}
-                  onAdjust={(id, fgHex, bgHex) => {
-                    setCustomResultsMap(prev => ({ ...prev, [id]: { fg: fgHex, bg: bgHex } }));
-                  }}
-                />
-              )}
+              {selectedDetails && selectedIssue && selectedRec && (() => {
+                const customResult = customResultsMap[selectedDetails.id];
+                const currentFg = customResult?.fg || selectedRec.suggestedFg;
+                const currentBg = customResult?.bg || selectedRec.suggestedBg;
+                const isModified = !!customResult;
+
+                const toggleSection = (id: string) => {
+                  setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+                };
+
+                const handleCopy = () => {
+                  navigator.clipboard.writeText(`FG: ${currentFg}, BG: ${currentBg}`);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                };
+
+                return (
+                  <div className="flex flex-col gap-4 pb-8">
+                    <RecommendationCard 
+                      element={selectedDetails}
+                      issue={selectedIssue}
+                      recommendation={selectedRec}
+                    />
+
+                    <SidebarAccordionSection
+                      title="詳細・計算値 (最新)"
+                      icon={<Info className="w-3.5 h-3.5" />}
+                      isOpen={openSections.details}
+                      onToggle={() => toggleSection('details')}
+                    >
+                      <MetricDetails fw={currentFg} bg={currentBg} />
+                    </SidebarAccordionSection>
+
+                    <SidebarAccordionSection
+                      title="手動調整 (FG & BG)"
+                      icon={<Sliders className="w-3.5 h-3.5" />}
+                      isOpen={openSections.adjustment}
+                      onToggle={() => toggleSection('adjustment')}
+                      badge={isModified && <span className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded">調整中</span>}
+                    >
+                      <ColorAdjustmentSection 
+                        customFg={currentFg}
+                        customBg={currentBg}
+                        fixedFg={selectedRec.suggestedFg}
+                        fixedBg={selectedRec.suggestedBg}
+                        onFgChange={(hex) => setCustomResultsMap(prev => ({ ...prev, [selectedDetails.id]: { fg: hex, bg: currentBg } }))}
+                        onBgChange={(hex) => setCustomResultsMap(prev => ({ ...prev, [selectedDetails.id]: { fg: currentFg, bg: hex } }))}
+                        onReset={() => {
+                          const { [selectedDetails.id]: _, ...rest } = customResultsMap;
+                          setCustomResultsMap(rest);
+                        }}
+                      />
+                    </SidebarAccordionSection>
+
+                    <SidebarAccordionSection
+                      title="見え方のシミュレーション"
+                      icon={<Eye className="w-3.5 h-3.5" />}
+                      isOpen={openSections.simulation}
+                      onToggle={() => toggleSection('simulation')}
+                    >
+                      <SimulationPreview fw={currentFg} bg={currentBg} text={selectedDetails.text} />
+                    </SidebarAccordionSection>
+
+                    <button
+                      onClick={handleCopy}
+                      className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                        copied ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-800 text-white hover:bg-slate-900'
+                      }`}
+                    >
+                      {copied ? <><CheckCircle2 className="w-4 h-4" /> コピーしました</> : <><Copy className="w-4 h-4" /> カラー値をコピー</>}
+                    </button>
+                  </div>
+                );
+              })()}
 
               {selectedDetails && !selectedIssue && (() => {
                 const fg = parseHex(selectedDetails.foregroundColor);

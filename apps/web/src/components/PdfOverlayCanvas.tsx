@@ -15,6 +15,7 @@ interface PdfOverlayCanvasProps {
   cvdSimulation?: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia';
   customResultsMap?: Record<string, { fg: string, bg: string }>;
   showOverlays?: boolean;
+  zoomScale?: number;
 }
 
 export default function PdfOverlayCanvas({
@@ -29,33 +30,46 @@ export default function PdfOverlayCanvas({
   previewSource = 'original',
   cvdSimulation = 'none',
   customResultsMap = {},
-  showOverlays = true
+  showOverlays = true,
+  zoomScale = 1.0
 }: PdfOverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sizeDetectorRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [simulatedImageUrl, setSimulatedImageUrl] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
   // Auto-fit scale logic
   useEffect(() => {
-    if (!containerRef.current) return;
-    const updateScale = () => {
-      const container = containerRef.current?.parentElement;
-      if (!container) return;
+    if (!sizeDetectorRef.current) return;
+    
+    const updateScale = (width: number, height: number) => {
+      if (!width || !height) return;
       
       const padding = 64;
-      const maxW = container.clientWidth - padding;
+      const availW = Math.max(100, width - padding);
+      const availH = Math.max(100, height - padding);
       
-      let newScale = maxW / originalWidth;
-      if (newScale > 1.5) newScale = 1.5;
+      const sw = availW / originalWidth;
+      const sh = availH / originalHeight;
       
-      setScale(newScale);
+      let ns = Math.min(sw, sh);
+      if (ns > 2.0) ns = 2.0;
+      if (ns < 0.05) ns = 0.05;
+      
+      setScale(ns);
     };
 
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
-  }, [originalWidth]);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        updateScale(entry.contentRect.width, entry.contentRect.height);
+      }
+    });
+
+    observer.observe(sizeDetectorRef.current);
+    return () => observer.disconnect();
+  }, [originalWidth, originalHeight]);
 
   // Effect to generate simulated image
   useEffect(() => {
@@ -185,59 +199,66 @@ export default function PdfOverlayCanvas({
   const finalImageUrl = simulatedImageUrl || imageUrl;
   // Use both the global simulation state AND the manual toggle
   const actualShowOverlays = showOverlays && cvdSimulation === 'none';
+  const effectiveScale = scale * zoomScale;
 
   return (
-    <div className="relative">
-      <div 
-        ref={containerRef} 
-        className="relative shadow-xl outline outline-1 outline-slate-300 transition-all duration-300"
-        style={{
-          width: originalWidth * scale,
-          height: originalHeight * scale,
-          backgroundImage: `url(${finalImageUrl})`,
-          backgroundSize: 'contain',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        {/* Loading overlay for simulation */}
-        {isSimulating && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/20 backdrop-blur-[1px] z-50">
-            <div className="text-xs font-bold text-slate-600 bg-white/80 px-4 py-2 rounded-full shadow-lg border border-slate-100 animate-pulse">
-              プレビュー生成中...
+    <div className="relative w-full h-full overflow-hidden">
+      {/* Invisible detector that fills parent but doesn't scroll */}
+      <div ref={sizeDetectorRef} className="absolute inset-0 pointer-events-none invisible" />
+      
+      {/* Scrollable layer for the content */}
+      <div className="absolute inset-0 overflow-auto p-4 lg:p-8 flex items-start justify-center">
+        <div 
+          ref={containerRef} 
+          className="relative shadow-xl outline outline-1 outline-slate-300 transform-gpu shrink-0 m-auto"
+          style={{
+            width: originalWidth * effectiveScale,
+            height: originalHeight * effectiveScale,
+            backgroundImage: `url(${finalImageUrl})`,
+            backgroundSize: 'contain',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          {/* Loading overlay for simulation */}
+          {isSimulating && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/20 backdrop-blur-[1px] z-50">
+              <div className="text-xs font-bold text-slate-600 bg-white/80 px-4 py-2 rounded-full shadow-lg border border-slate-100 animate-pulse">
+                プレビュー生成中...
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Overlay boxes */}
-        {actualShowOverlays && elements.map((el) => {
-          const isIssue = issues.some(i => i.elementId === el.id);
-          const isSelected = selectedElementId === el.id;
-          
-          let boxClass = "absolute cursor-pointer transition-all border-2 rounded-[1px] ";
-          
-          if (isSelected) {
-            boxClass += "border-blue-500 bg-transparent z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)] ";
-          } else if (isIssue) {
-            boxClass += "border-red-400/80 bg-transparent hover:border-red-500 hover:bg-red-500/5 z-10 ";
-          } else {
-            boxClass += "border-transparent hover:border-emerald-400 hover:bg-emerald-400/5 z-0 ";
-          }
-
-          return (
-            <div
-              key={el.id}
-              onClick={() => onSelectElement(el.id)}
-              className={boxClass}
-              title={el.text}
-              style={{
-                left: el.bounds.x * scale,
-                top: el.bounds.y * scale,
-                width: el.bounds.width * scale,
-                height: el.bounds.height * scale,
-              }}
-            />
-          );
-        })}
+          )}
+ 
+          {/* Overlay boxes */}
+          {actualShowOverlays && elements.map((el) => {
+            const isIssue = issues.some(i => i.elementId === el.id);
+            const isSelected = selectedElementId === el.id;
+            
+            let boxClass = "absolute cursor-pointer border-2 rounded-[1px] ";
+            
+            if (isSelected) {
+              boxClass += "border-blue-500 bg-transparent z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)] ";
+            } else if (isIssue) {
+              boxClass += "border-red-400/80 bg-transparent hover:border-red-500 hover:bg-red-500/5 z-10 ";
+            } else {
+              boxClass += "border-transparent hover:border-emerald-400 hover:bg-emerald-400/5 z-0 ";
+            }
+ 
+            return (
+              <div
+                key={el.id}
+                onClick={() => onSelectElement(el.id)}
+                className={boxClass}
+                title={el.text}
+                style={{
+                  left: el.bounds.x * effectiveScale,
+                  top: el.bounds.y * effectiveScale,
+                  width: el.bounds.width * effectiveScale,
+                  height: el.bounds.height * effectiveScale,
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );

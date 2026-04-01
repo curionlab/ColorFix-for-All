@@ -8,7 +8,7 @@ const { title, hideFooter = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="ja">
+<html lang="ja" class="h-full overflow-hidden">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="description" content="A tool that proposes minimal color changes to ensure text readability for diverse color vision without destroying the original brand design." />
@@ -17,7 +17,7 @@ const { title, hideFooter = false } = Astro.props;
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 	</head>
-	<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+	<body class="bg-slate-50 text-slate-900 font-sans antialiased h-full flex flex-col overflow-hidden">
     <header class="border-b bg-white flex-shrink-0">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <a href={import.meta.env.BASE_URL} class="font-bold text-xl tracking-tight text-emerald-700">ColorFix<span class="text-slate-800"> for All</span></a>
