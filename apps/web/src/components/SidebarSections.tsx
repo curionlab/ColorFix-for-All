@@ -37,32 +37,73 @@ export function SidebarAccordionSection({ title, icon, isOpen, onToggle, childre
   );
 }
 
-export function MetricDetails({ fw, bg }: { fw: string; bg: string }) {
+export function MetricDetails({ fw, bg, originalFg, originalBg }: { fw: string; bg: string; originalFg?: string; originalBg?: string }) {
   const pBg = parseHex(bg);
   const pFg = parseHex(fw);
   if (!pBg || !pFg) return null;
   const wcag = checkWcagCompliance(pFg, pBg);
   const iso = checkIsoCompliance(pFg, pBg);
+
+  let originalWcag = null;
+  let originalIso = null;
+  if (originalFg && originalBg) {
+    const opFg = parseHex(originalFg);
+    const opBg = parseHex(originalBg);
+    if (opFg && opBg) {
+      originalWcag = checkWcagCompliance(opFg, opBg);
+      originalIso = checkIsoCompliance(opFg, opBg);
+    }
+  }
   
   return (
     <div className="flex flex-col gap-3 font-mono text-[11px]">
       <div className="flex justify-between items-center border-b border-slate-50 pb-2">
         <span className="text-slate-400 uppercase">WCAG Ratio</span>
-        <span className={`font-bold ${wcag.passesAA ? 'text-emerald-600' : 'text-red-500'}`}>
-          {wcag.ratio.toFixed(2)} : 1 {wcag.passesAA ? '✓' : '✗'}
-        </span>
+        <div className="flex items-center gap-2">
+          {originalWcag && (
+            <>
+              <span className="text-slate-400 line-through decoration-slate-300 opacity-60">
+                {originalWcag.ratio.toFixed(2)}
+              </span>
+              <ArrowRight className="w-2.5 h-2.5 text-slate-300" />
+            </>
+          )}
+          <span className={`font-bold ${wcag.ratio >= 4.5 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {wcag.ratio.toFixed(2)} : 1 {wcag.ratio >= 4.5 ? '✓' : '✗'}
+          </span>
+        </div>
       </div>
       <div className="flex justify-between items-center border-b border-slate-50 pb-2">
         <span className="text-slate-400 uppercase">P/D型 (赤緑) ΔE₀₀</span>
-        <span className={`font-bold ${iso.deltaE_PD >= 18 ? 'text-emerald-600' : 'text-red-400'}`}>
-          {iso.deltaE_PD.toFixed(1)} {iso.deltaE_PD >= 18 ? '✓' : '✗'}
-        </span>
+        <div className="flex items-center gap-2">
+          {originalIso && (
+            <>
+              <span className="text-slate-400 line-through decoration-slate-300 opacity-60">
+                {originalIso.deltaE_PD.toFixed(1)}
+              </span>
+              <ArrowRight className="w-2.5 h-2.5 text-slate-300" />
+            </>
+          )}
+          <span className={`font-bold ${iso.deltaE_PD >= 18 ? 'text-emerald-600' : 'text-red-400'}`}>
+            {iso.deltaE_PD.toFixed(1)} {iso.deltaE_PD >= 18 ? '✓' : '✗'}
+          </span>
+        </div>
       </div>
       <div className="flex justify-between items-center">
         <span className="text-slate-400 uppercase">T型 (青黄) ΔE₀₀</span>
-        <span className={`font-bold ${iso.deltaE_T >= 18 ? 'text-emerald-600' : 'text-red-400'}`}>
-          {iso.deltaE_T.toFixed(1)} {iso.deltaE_T >= 18 ? '✓' : '✗'}
-        </span>
+        <div className="flex items-center gap-2">
+          {originalIso && (
+            <>
+              <span className="text-slate-400 line-through decoration-slate-300 opacity-60">
+                {originalIso.deltaE_T.toFixed(1)}
+              </span>
+              <ArrowRight className="w-2.5 h-2.5 text-slate-300" />
+            </>
+          )}
+          <span className={`font-bold ${iso.deltaE_T >= 18 ? 'text-emerald-600' : 'text-red-400'}`}>
+            {iso.deltaE_T.toFixed(1)} {iso.deltaE_T >= 18 ? '✓' : '✗'}
+          </span>
+        </div>
       </div>
     </div>
   );

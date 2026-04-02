@@ -417,12 +417,12 @@ export default function WorkspaceLayout() {
                     />
 
                     <SidebarAccordionSection
-                      title="詳細・計算値 (最新)"
+                      title="詳細・計算値 (変更前後)"
                       icon={<Info className="w-3.5 h-3.5" />}
                       isOpen={openSections.details}
                       onToggle={() => toggleSection('details')}
                     >
-                      <MetricDetails fw={currentFg} bg={currentBg} />
+                      <MetricDetails fw={currentFg} bg={currentBg} originalFg={selectedRec.originalFg} originalBg={selectedRec.originalBg} />
                     </SidebarAccordionSection>
 
                     <SidebarAccordionSection
