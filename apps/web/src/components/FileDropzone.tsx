@@ -42,9 +42,12 @@ export default function FileDropzone({ onFileSelect, accept = 'application/pdf,i
       <button
         onClick={async (e) => {
           e.stopPropagation();
-          const res = await fetch('/dummy.pdf');
+          const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
+            ? import.meta.env.BASE_URL 
+            : import.meta.env.BASE_URL + '/';
+          const res = await fetch(`${baseUrl}dummy.pdf`);
           const blob = await res.blob();
-          onFileSelect(new File([blob], 'dummy.pdf', { type: 'application/pdf' }));
+          onFileSelect(new File([blob], 'test.pdf', { type: 'application/pdf' }));
         }}
         className="mt-6 px-4 py-2 bg-slate-800 text-white rounded text-sm font-bold z-50 relative"
       >
