@@ -31,8 +31,6 @@ yarn-error.log*
 
 # local temp
 dev/
-*.pdf
-test.pdf
 
 # old version
 old_version/    

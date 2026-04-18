@@ -46,8 +46,13 @@ export default function FileDropzone({ onFileSelect, accept = 'application/pdf,i
             ? import.meta.env.BASE_URL 
             : import.meta.env.BASE_URL + '/';
           const res = await fetch(`${baseUrl}dummy.pdf`);
+          if (!res.ok) {
+            console.error('Failed to fetch dummy.pdf:', res.status, res.statusText);
+            alert(`[Debug] dummy.pdfの取得に失敗しました。ステータス: ${res.status}\nデプロイ環境でファイルが存在するか確認してください。`);
+            return;
+          }
           const blob = await res.blob();
-          onFileSelect(new File([blob], 'test.pdf', { type: 'application/pdf' }));
+          onFileSelect(new File([blob], 'dummy.pdf', { type: 'application/pdf' }));
         }}
         className="mt-6 px-4 py-2 bg-slate-800 text-white rounded text-sm font-bold z-50 relative"
       >
