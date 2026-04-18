@@ -54,60 +54,109 @@ export function MetricDetails({ fw, bg, originalFg, originalBg }: { fw: string; 
       originalIso = checkIsoCompliance(opFg, opBg);
     }
   }
-  
+
+  const RenderStatus = ({ pass, value, target }: { pass: boolean, value: string, target?: string }) => (
+    <div className="flex flex-col items-center">
+      <div className="flex items-center gap-1.5">
+        {pass ? (
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+        ) : (
+          <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+        )}
+        <span className={`text-[13px] font-black ${pass ? 'text-emerald-600' : 'text-rose-600'}`}>
+          {value}
+        </span>
+      </div>
+      {target && <span className="text-[8px] text-slate-400 mt-1 uppercase tracking-tighter">基準: {target}</span>}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-3 font-mono text-[11px]">
-      <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-        <span className="text-slate-400 uppercase">WCAG Ratio</span>
-        <div className="flex items-center gap-2">
-          {originalWcag && (
-            <>
-              <span className="text-slate-400 line-through decoration-slate-300 opacity-60">
-                {originalWcag.ratio.toFixed(2)}
-              </span>
-              <ArrowRight className="w-2.5 h-2.5 text-slate-300" />
-            </>
-          )}
-          <span className={`font-bold ${wcag.ratio >= 4.5 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {wcag.ratio.toFixed(2)} : 1 {wcag.ratio >= 4.5 ? '✓' : '✗'}
-          </span>
+    <div className="flex flex-col gap-4">
+      {/* Table Header */}
+      <div className="grid grid-cols-[1fr,85px,85px] gap-2 border-b border-slate-200 pb-2 px-1">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">判定タイプ</div>
+        <div className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">変更前</div>
+        <div className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">変更後</div>
+      </div>
+
+      {/* WCAG Row */}
+      <div className="grid grid-cols-[1fr,85px,85px] gap-2 items-center px-1 py-1 border-b border-slate-50">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-700">WCAG 輝度コントラスト</span>
+          <span className="text-[9px] text-slate-400">標準視覚における識別性</span>
+        </div>
+        <div className="text-center">
+          {originalWcag ? (
+            <RenderStatus pass={originalWcag.passesAA} value={originalWcag.ratio.toFixed(2)} />
+          ) : <span className="text-slate-300">-</span>}
+        </div>
+        <div className="text-center">
+          <RenderStatus pass={wcag.passesAA} value={wcag.ratio.toFixed(2)} target="4.5:1" />
         </div>
       </div>
-      <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-        <span className="text-slate-400 uppercase">P/D型 (赤緑) ΔE₀₀</span>
-        <div className="flex items-center gap-2">
-          {originalIso && (
-            <>
-              <span className="text-slate-400 line-through decoration-slate-300 opacity-60">
-                {originalIso.deltaE_PD.toFixed(1)}
-              </span>
-              <ArrowRight className="w-2.5 h-2.5 text-slate-300" />
-            </>
-          )}
-          <span className={`font-bold ${iso.deltaE_PD >= 18 ? 'text-emerald-600' : 'text-red-400'}`}>
-            {iso.deltaE_PD.toFixed(1)} {iso.deltaE_PD >= 18 ? '✓' : '✗'}
-          </span>
+
+      {/* P Row */}
+      <div className="grid grid-cols-[1fr,85px,85px] gap-2 items-center px-1 py-1 border-b border-slate-50">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-700">P型 (プロタノピア)</span>
+          <span className="text-[9px] text-slate-400">赤を暗く感じる特性時</span>
+        </div>
+        <div className="text-center">
+          {originalIso ? (
+            <RenderStatus pass={originalIso.deltaE_P >= 18} value={originalIso.deltaE_P.toFixed(1)} />
+          ) : <span className="text-slate-300">-</span>}
+        </div>
+        <div className="text-center">
+          <RenderStatus pass={iso.deltaE_P >= 18} value={iso.deltaE_P.toFixed(1)} target="ΔE 18" />
         </div>
       </div>
-      <div className="flex justify-between items-center">
-        <span className="text-slate-400 uppercase">T型 (青黄) ΔE₀₀</span>
-        <div className="flex items-center gap-2">
-          {originalIso && (
-            <>
-              <span className="text-slate-400 line-through decoration-slate-300 opacity-60">
-                {originalIso.deltaE_T.toFixed(1)}
-              </span>
-              <ArrowRight className="w-2.5 h-2.5 text-slate-300" />
-            </>
-          )}
-          <span className={`font-bold ${iso.deltaE_T >= 18 ? 'text-emerald-600' : 'text-red-400'}`}>
-            {iso.deltaE_T.toFixed(1)} {iso.deltaE_T >= 18 ? '✓' : '✗'}
-          </span>
+
+      {/* D Row */}
+      <div className="grid grid-cols-[1fr,85px,85px] gap-2 items-center px-1 py-1 border-b border-slate-50">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-700">D型 (デュータノピア)</span>
+          <span className="text-[9px] text-slate-400">赤と緑を混同する特性時</span>
         </div>
+        <div className="text-center">
+          {originalIso ? (
+            <RenderStatus pass={originalIso.deltaE_D >= 18} value={originalIso.deltaE_D.toFixed(1)} />
+          ) : <span className="text-slate-300">-</span>}
+        </div>
+        <div className="text-center">
+          <RenderStatus pass={iso.deltaE_D >= 18} value={iso.deltaE_D.toFixed(1)} target="ΔE 18" />
+        </div>
+      </div>
+
+      {/* T Row */}
+      <div className="grid grid-cols-[1fr,85px,85px] gap-2 items-center px-1 py-1">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-700">T型 (トリタノピア)</span>
+          <span className="text-[9px] text-slate-400">青と黄を混同する特性時</span>
+        </div>
+        <div className="text-center">
+          {originalIso ? (
+            <RenderStatus pass={originalIso.deltaE_T >= 18} value={originalIso.deltaE_T.toFixed(1)} />
+          ) : <span className="text-slate-300">-</span>}
+        </div>
+        <div className="text-center">
+          <RenderStatus pass={iso.deltaE_T >= 18} value={iso.deltaE_T.toFixed(1)} target="ΔE 18" />
+        </div>
+      </div>
+
+      <div className="mt-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 mb-1">
+          <div className="w-1 h-1 rounded-full bg-slate-400"></div> 判定基準
+        </div>
+        <p className="text-[10px] text-slate-400 leading-tight">
+          標準視覚はWCAG 2.1基準(4.5:1)、各色覚特性はISO 24505-2基準に基づき色彩差(ΔE ≥ 18)で判定しています。
+        </p>
       </div>
     </div>
   );
 }
+
+
 
 export function ColorAdjustmentSection({
   customFg,

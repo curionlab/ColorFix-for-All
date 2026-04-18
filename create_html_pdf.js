@@ -25,46 +25,45 @@ const fs = require('fs');
           font-family: var(--font-family);
           color: var(--text-main);
           background-color: var(--bg-main);
-          padding: 60px;
-          line-height: 1.6;
-          max-width: 900px;
+          padding: 40px;
+          line-height: 1.5;
+          max-width: 800px;
           margin: 0 auto;
         }
         h1 {
-          font-size: 32px;
+          font-size: 28px;
           font-weight: 800;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
           letter-spacing: -0.025em;
           color: #0f172a;
         }
         .subtitle {
           color: #64748b;
-          font-size: 16px;
-          margin-bottom: 48px;
+          font-size: 14px;
+          margin-bottom: 32px;
           border-left: 4px solid #3b82f6;
-          padding-left: 16px;
+          padding-left: 12px;
         }
         .section-title {
-          font-size: 18px;
+          font-size: 16px;
           font-weight: 700;
-          margin: 40px 0 20px;
+          margin: 32px 0 16px;
           color: #334155;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
         .grid {
           display: grid;
-          gap: 20px;
+          gap: 16px;
           grid-template-columns: 1fr;
         }
         .box {
-          padding: 24px;
-          border-radius: 12px;
+          padding: 20px;
+          border-radius: 10px;
           font-weight: 600;
-          font-size: 16px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          font-size: 15px;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.06);
           border: 1px solid rgba(0,0,0,0.05);
-          transition: transform 0.2s;
         }
 
         /* 1. Good Contrast */
@@ -88,18 +87,19 @@ const fs = require('fs');
           background-color: #15803D; 
         }
 
-        /* 4. Blue-Yellow Clash (T type NG) */
-        /* Blue #1E40AF on Olive/Yellow #854D0E */
+        /* 4. Final Pink-Yellow Clash (T type NG) */
+        /* Lighter, redder pink (#FF85B2) with vibrant yellow (#FFED00). */
+        /* These vibrate in normal vision (CR ~1.6) but collapse in Tritanopia simulation. */
         .t-fail { 
-          color: #1E40AF; 
-          background-color: #854D0E; 
+          color: #FFED00; 
+          background-color: #FF85B2; 
         }
 
         /* 5. Natural Hard-to-see Case (Low Vision / Subtle Design) */
         .natural-hard {
-          color: #71717A;
-          background-color: #F4F4F5;
-          border: 1px solid #E4E4E7;
+          color: #A1A1AA;
+          background-color: #FAFAFA;
+          border: 1px solid #F4F4F5;
           font-weight: 400;
         }
 
@@ -107,23 +107,23 @@ const fs = require('fs');
         .dashboard {
           background: #fdfdfd;
           border: 1px solid #f1f5f9;
-          border-radius: 16px;
-          padding: 32px;
-          margin-top: 40px;
+          border-radius: 12px;
+          padding: 24px;
+          margin-top: 32px;
         }
         .status-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 24px;
+          margin-bottom: 20px;
         }
         .status-dot-group {
           display: flex;
-          gap: 12px;
+          gap: 10px;
         }
         .status-dot {
-          width: 14px;
-          height: 14px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
         }
         /* Problematic colors in a dashboard context */
@@ -134,64 +134,64 @@ const fs = require('fs');
         .data-row {
           display: flex;
           align-items: center;
-          padding: 12px 0;
+          padding: 10px 0;
           border-bottom: 1px solid #f1f5f9;
         }
         .data-row:last-child { border-bottom: none; }
-        .data-label { flex: 1; font-size: 14px; color: #475569; }
-        .data-value { font-weight: 700; color: #0f172a; }
+        .data-label { flex: 1; font-size: 13px; color: #475569; }
+        .data-value { font-weight: 700; color: #0f172a; font-size: 13px; }
         
         .badge {
-          padding: 4px 12px;
+          padding: 3px 10px;
           border-radius: 9999px;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 800;
           margin-left: 12px;
         }
         /* Natural clashing badges */
         .badge-pd { color: #FECACA; background-color: #065F46; } /* Red on Dark Green */
-        .badge-t { color: #BFDBFE; background-color: #A16207; } /* Blue on Brown/Yellow */
+        .badge-t { color: #FFED00; background-color: #FF85B2; } /* Yellow on Pink */
 
       </style>
     </head>
     <body>
       <h1>Accessibility Test Report</h1>
       <p class="subtitle">
-        このドキュメントは、ISO 24505-2基準およびWCAGに基づくアクセシビリティのコントラスト・色覚シミュレーション用のテストサンプルです。
+        ISO 24505-2基準およびWCAGに基づく、アクセシビリティの色覚シミュレーション用テストサンプルです。
       </p>
       
       <div class="section-title">Contrast & Color Vision Test Patterns</div>
       <div class="grid">
         <div class="box pass-all">
           1. Good Contrast (WCAG Pass, ISO Pass)
-          <div style="font-size: 12px; font-weight: 400; opacity: 0.8; margin-top: 4px;">Standard dark text on light background. Ratio > 7:1</div>
+          <div style="font-size: 11px; font-weight: 400; opacity: 0.8; margin-top: 2px;">Standard dark text on light background. Ratio > 7:1</div>
         </div>
         
         <div class="box fail-all">
           2. Low Lightness / Low Contrast (WCAG Fail, ISO Fail)
-          <div style="font-size: 12px; font-weight: 400; opacity: 0.8; margin-top: 4px;">Light grey on white. Hard for low vision users.</div>
+          <div style="font-size: 11px; font-weight: 400; opacity: 0.8; margin-top: 2px;">Light grey on white. Hard for low vision users.</div>
         </div>
         
         <div class="box pd-fail">
           3. Red-Green Clash (NG for P/D types)
-          <div style="font-size: 12px; font-weight: 400; opacity: 1.0; margin-top: 4px; color: #ffffff;">Similar luminance R/G. Distinguishable by hue only.</div>
+          <div style="font-size: 11px; font-weight: 400; opacity: 1.0; margin-top: 2px; color: #ffffff;">Similar luminance R/G. Distinguishable by hue only.</div>
         </div>
         
         <div class="box t-fail">
-          4. Blue-Yellow Clash (NG for T type)
-          <div style="font-size: 12px; font-weight: 400; opacity: 1.0; margin-top: 4px; color: #ffffff;">Blue and Yellow confusion for Tritanopia.</div>
+          4. Pink-Yellow Clash (NG for T type)
+          <div style="font-size: 11px; font-weight: 400; opacity: 1.0; margin-top: 2px; color: #FFED00;">Yellow/Pink confusion. Indistinguishable in Tritanopia simulation.</div>
         </div>
 
         <div class="box natural-hard">
           5. Subtle UI Design (Natural Case)
-          <div style="font-size: 12px; font-weight: 400; opacity: 0.8; margin-top: 4px;">Modern "ghost" style that blends into the background for some users.</div>
+          <div style="font-size: 11px; font-weight: 400; opacity: 0.8; margin-top: 2px;">Modern "ghost" style that blends into the background for some users.</div>
         </div>
       </div>
 
       <div class="section-title">Natural Design Examples (Contextual Test)</div>
       <div class="dashboard">
         <div class="status-header">
-          <span style="font-weight: 700;">System Health Dashboard</span>
+          <span style="font-weight: 700; font-size: 14px;">System Health Dashboard</span>
           <div class="status-dot-group">
             <div class="status-dot dot-error" title="Critical"></div>
             <div class="status-dot dot-success" title="Healthy"></div>
@@ -210,7 +210,7 @@ const fs = require('fs');
           <span class="badge badge-t">STORAGE ACTIVE</span>
         </div>
         
-        <p style="font-size: 11px; color: #94a3b8; margin-top: 24px; font-style: italic;">
+        <p style="font-size: 10px; color: #94a3b8; margin-top: 16px; font-style: italic;">
           * Note: The colored dots and badges above use color alone to convey status, which is a failure of WCAG 1.4.1.
         </p>
       </div>
@@ -240,5 +240,6 @@ const fs = require('fs');
   await browser.close();
   console.log('PDF generated successfully via Puppeteer.');
 })();
+
 
 

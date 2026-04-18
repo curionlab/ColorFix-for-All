@@ -7,6 +7,10 @@ export interface IsoResult {
   deltaL: number;
   /** Normal-vision CIEDE2000 color difference */
   normalDeltaE: number;
+  /** P-type (protanopia) CVD simulated CIEDE2000 */
+  deltaE_P: number;
+  /** D-type (deuteranopia) CVD simulated CIEDE2000 */
+  deltaE_D: number;
   /** Worst-case P/D-type (red-green) CVD simulated CIEDE2000 */
   deltaE_PD: number;
   /** T-type (blue-yellow) CVD simulated CIEDE2000 */
@@ -24,9 +28,6 @@ export interface IsoResult {
  * - Primary metric: CVD-simulated CIEDE2000 color difference (≥ 18)
  * - Secondary text metric: CVD-simulated WCAG contrast ratio (≥ 4.5)
  * - Low vision metric: CIELAB lightness difference ΔL* (≥ 20)
- *
- * Thresholds are research-based estimates for RGB display usage;
- * they do not constitute a formal ISO 24505-2 conformance declaration.
  */
 export function checkIsoCompliance(fg: RgbColor, bg: RgbColor): IsoResult {
   const fgLab = rgbToLab(fg);
@@ -37,35 +38,32 @@ export function checkIsoCompliance(fg: RgbColor, bg: RgbColor): IsoResult {
   // Normal-vision CIEDE2000
   const normalDeltaE = ciede2000(fgLab, bgLab);
 
-  // CVD Simulation — P-type (Protanopia): L-cone absence
+  // CVD Simulation — P-type (Protanopia)
   const fgP = simulateCVD(fg, 'protanopia');
   const bgP = simulateCVD(bg, 'protanopia');
   const deltaE_P = ciede2000(rgbToLab(fgP), rgbToLab(bgP));
 
-  // CVD Simulation — D-type (Deuteranopia): M-cone absence
+  // CVD Simulation — D-type (Deuteranopia)
   const fgD = simulateCVD(fg, 'deuteranopia');
   const bgD = simulateCVD(bg, 'deuteranopia');
   const deltaE_D = ciede2000(rgbToLab(fgD), rgbToLab(bgD));
 
-  // P/D worst-case: models red-green confusion axis
+  // P/D worst-case
   const deltaE_PD = Math.min(deltaE_P, deltaE_D);
 
-  // CVD Simulation — T-type (Tritanopia): S-cone absence
+  // CVD Simulation — T-type (Tritanopia)
   const fgT = simulateCVD(fg, 'tritanopia');
   const bgT = simulateCVD(bg, 'tritanopia');
   const deltaE_T = ciede2000(rgbToLab(fgT), rgbToLab(bgT));
 
-  // WCAG contrast ratio after each CVD simulation (text legibility check)
+  // WCAG contrast ratio after each CVD simulation
   const contrastP = getContrastRatio(fgP, bgP);
   const contrastD = getContrastRatio(fgD, bgD);
   const contrastT = getContrastRatio(fgT, bgT);
   const minCvdContrastRatio = Math.min(contrastP, contrastD, contrastT);
 
-  // ΔL* ≥ 20 ensures luminance difference for low vision / high-contrast need
   const luminanceContrastPasses = deltaL >= 20.0;
 
-  // Problematic pairings: color is distinguishable in normal vision but not after CVD
-  // CIEDE2000 threshold ≥ 18 corresponds to clearly perceptible color difference
   const DELTA_E_THRESHOLD = 18;
   const failsPD = normalDeltaE >= DELTA_E_THRESHOLD && deltaE_PD < DELTA_E_THRESHOLD;
   const failsT  = normalDeltaE >= DELTA_E_THRESHOLD && deltaE_T  < DELTA_E_THRESHOLD;
@@ -90,6 +88,8 @@ export function checkIsoCompliance(fg: RgbColor, bg: RgbColor): IsoResult {
   return {
     deltaL,
     normalDeltaE,
+    deltaE_P,
+    deltaE_D,
     deltaE_PD,
     deltaE_T,
     minCvdContrastRatio,
@@ -99,3 +99,4 @@ export function checkIsoCompliance(fg: RgbColor, bg: RgbColor): IsoResult {
     passesIso24505
   };
 }
+
